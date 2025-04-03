@@ -27,7 +27,7 @@ body {
     padding: 0.5rem;
     border-radius: 5px;
     text-align: center;
-    width: 100px;
+    width: 120px;
   }
   #garcia-box { top: 80%; left: 40%; transform: translateX(-50%); }
   #san-luis-box { top: 55%; left: 50%; transform: translateX(-50%); }
