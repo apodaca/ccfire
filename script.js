@@ -1,7 +1,7 @@
 // Define danger thresholds globally so they are available everywhere
-const windThreshold = 25;
-const tempThreshold = 85;
-const rhThreshold = 20;
+const windThreshold = 10;
+const tempThreshold = 75;
+const rhThreshold = 15;
 
 const towns = [
   { name: 'Garcia', lat: 37.0001, lon: -105.6000, el: document.getElementById('garcia-box') },
