@@ -1,0 +1,65 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 1rem;
+    background: #f4f4f4;
+  }
+  h1 {
+    font-size: 1.25rem;
+    text-align: center;
+    margin-bottom: 1rem;
+  }
+  .map-container {
+    position: relative;
+    width: 100%; max-width: 400px;
+    margin: auto;
+  }
+  .map-container object {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+  .weather-box {
+    position: absolute;
+    background-color: gold;
+    color: #000;
+    font-weight: bold;
+    padding: 0.5rem;
+    border-radius: 5px;
+    text-align: center;
+    width: 100px;
+  }
+  #garcia-box { top: 80%; left: 40%; transform: translateX(-50%); }
+  #san-luis-box { top: 55%; left: 50%; transform: translateX(-50%); }
+  #fort-garland-box { top: 30%; left: 50%; transform: translateX(-50%); }
+  
+  .hazard {
+    font-size: 2.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    border: 2px solid transparent;
+    text-align: center;
+    opacity: 0.3;
+    transition: all 0.3s ease;
+  }
+  .hazard span {
+    display: block;
+    font-size: 0.8rem;
+    margin-top: 0.2rem;
+    color: #333;
+    visibility: hidden;
+  }
+  .hazard.active {
+    border-color: red;
+    opacity: 1;
+    animation: pulse 1.2s ease-in-out infinite;
+  }
+  .hazard.active span {
+    visibility: visible;
+  }
+  @keyframes pulse {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.15); opacity: 0.7; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  

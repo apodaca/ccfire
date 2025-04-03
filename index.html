@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Costilla County Fire Weather (V2)</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <h1>🔥 Costilla County Fire Weather (V2)</h1>
+
+  <div id="hazard-bar" style="display: flex; justify-content: center; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem;"></div>
+  <div id="hazard-message" style="text-align: center; font-size: 0.9rem; color: #b30000; font-weight: bold; margin-bottom: 1rem;"></div>
+
+  <div id="burn-advisory" style="text-align: center; font-size: 0.95rem; background-color: #fff8dc; color: #444; border: 1px solid #e0b94d; padding: 0.75rem 1rem; max-width: 600px; margin: 0 auto 1rem auto; border-radius: 6px;">
+    🔥 <strong>Burn Advisory:</strong> The forecast indicates conditions appear safe. Please burn with caution.<br />
+    Call dispatch to inform them about the controlled burn and verify that it is safe to proceed: <strong>(719) 589-5807</strong>
+    <div id="burn-checklist" style="text-align: left; margin-top: 1rem; font-size: 0.9rem; display: none;">
+      <h4 style="margin-bottom: 0.5rem;">✅ Burn Safety Checklist</h4>
+      <ul style="padding-left: 1.2rem; margin: 0;">
+        <li>📞 Call dispatch to notify them of your controlled burn: <strong>(719) 589-5807</strong></li>
+        <li>🧯 Ensure water and tools are on hand</li>
+        <li>🚜 Create firebreaks by clearing dry vegetation around the burn area</li>
+        <li>👥 Never burn alone — always have help</li>
+        <li>🌤️ Burn only during daylight hours and monitor the weather</li>
+        <li>🔥 Stay with the fire until it is completely out</li>
+        <li>📞 Call dispatch again when the burn is complete</li>
+      </ul>
+    </div>
+    <div style="text-align: center; margin-top: 0.5rem;">
+      <button onclick="toggleChecklist()" style="font-size: 0.85rem; padding: 0.4rem 0.75rem;">Show Burn Checklist</button>
+    </div>
+  </div>
+
+  <div class="map-container">
+    <object type="image/svg+xml" data="assets/cos_county2.svg"></object>
+    <div id="garcia-box" class="weather-box"></div>
+    <div id="san-luis-box" class="weather-box"></div>
+    <div id="fort-garland-box" class="weather-box"></div>
+  </div>
+
+  <script src="script.js"></script>
+<section style="max-width: 800px; margin: 2rem auto; padding: 1rem; background: #fff; border-radius: 6px; border: 1px solid #ccc;">
+  <h2>🔥 Understanding Fire Weather Hazards</h2>
+  <p>Fire behavior is heavily influenced by weather conditions. Here's how each key factor contributes to fire risk:</p>
+  <ul style="line-height: 1.6;">
+    <li><strong>🌡️ High Temperatures:</strong> Hot air dries out vegetation and makes it easier for fires to ignite and spread.</li>
+    <li><strong>💧 Low Relative Humidity (RH):</strong> When RH drops below 20%, fuels like grass and brush dry quickly, making them more flammable.</li>
+    <li><strong>💨 Strong Winds:</strong> Wind can quickly fan flames and push fire fronts across long distances. Gusty conditions are especially dangerous.</li>
+    <li><strong>⚡ Dry Lightning:</strong> Thunderstorms that produce lightning but little rain can ignite wildfires in dry conditions.</li>
+    <li><strong>🌿 Fuel Dryness:</strong> Vegetation becomes fuel. When it's dry—especially in spring and late summer—it's more likely to ignite and carry fire.</li>
+    <li><strong>🌵 Drought:</strong> Extended dry periods lower soil and fuel moisture, setting the stage for more intense and unpredictable fires.</li>
+  </ul>
+  <p style="margin-top: 1rem;">For more information on fire preparedness and safety, check out:</p>
+  <ul>
+    <li><a href="https://csfs.colostate.edu/wildfire-mitigation/" target="_blank">Colorado State Forest Service – Wildfire Mitigation</a></li>
+    <li><a href="https://www.weather.gov/fire/" target="_blank">National Weather Service Fire Weather</a></li>
+    <li><a href="https://www.weather.gov/documentation/services-web-api" target="_blank">NOAA Weather Data Source – Weather.gov API</a></li>
+  </ul>
+</section>
+
+<footer style="text-align: center; font-size: 0.85rem; color: #666; margin-top: 2rem; padding: 1rem 0;">
+  Designed by Gilbert Apodaca, Costilla County Fire 4<br>
+  Created: April 2, 2025<br>
+  Last Updated: April 2, 2025
+</footer>
+</body>
+</html>
