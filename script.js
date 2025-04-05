@@ -1,6 +1,6 @@
 // Define danger thresholds globally so they are available everywhere
 const windThreshold = 20;
-const tempThreshold = 65;
+const tempThreshold = 5;
 const rhThreshold = 20;
 
 const towns = [
