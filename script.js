@@ -7,8 +7,8 @@ const hazardCriteria = {
 
 // Define which conditions trigger a red flag
 const redFlagConditions = {
-  requireWind: false,
-  requireTempAndRh: true,  // Temp and RH both required
+  requireWind: true,
+  requireTempAndRh: false,  // Temp and RH both required
   requireAnyTwo: false     // Any two hazards trigger red flag
 };
 
@@ -91,7 +91,7 @@ towns.forEach(town => {
       };
 
       addHazardIcon('tempIcon', '🌡️', 'High Temp', hazardsDetected.temp);
-      addHazardIcon('rhIcon', '💧', 'Low RH', hazardsDetected.rh);
+      addHazardIcon('rhIcon', '🔻', 'Low RH', hazardsDetected.rh);
       addHazardIcon('windIcon', '💨', 'Strong Wind', hazardsDetected.wind);
 
       const hazardMessage = document.getElementById('hazard-message');
