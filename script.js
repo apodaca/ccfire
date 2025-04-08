@@ -144,7 +144,7 @@ towns.forEach(town => {
 
       return `<tr>
         <td>${time}</td>
-        <td style="${tempDanger ? 'background-color: #ffcccc;' : ''}">${p.temperature}°F ${tempDanger ? '🔥' : ''}</td>
+        <td style="${tempDanger ? 'background-color: #ffcccc;' : ''}">${p.temperature}°F ${tempDanger ? '🌡️' : ''}</td>
         <td style="${windDanger ? 'background-color: #ffcccc;' : ''}">${p.windSpeed} ${windDanger ? '💨' : ''}</td>
         <td style="${rhDanger ? 'background-color: #ffcccc;' : ''}">${rhValue !== undefined ? rhValue + '%' : 'N/A'} ${rhDanger ? '🔻' : ''}</td>
         <td>${p.shortForecast}</td>
