@@ -59,14 +59,14 @@ towns.forEach(town => {
         };
 
         if (hazards.wind && !icons.includes('💨')) icons += '💨';
-        if (hazards.temp && !icons.includes('🔥')) icons += '🔥';
+        if (hazards.temp && !icons.includes('🌡️')) icons += '🌡️';
         if (hazards.rh && !icons.includes('🔻')) icons += '🔻';
       });
 
       // Check for red flag using flexible criteria
       const hazardsDetected = {
         wind: icons.includes('💨'),
-        temp: icons.includes('🔥'),
+        temp: icons.includes('🌡️'),
         rh: icons.includes('🔻')
       };
       const isRedFlag = checkRedFlag(hazardsDetected);
@@ -102,7 +102,7 @@ towns.forEach(town => {
         messages.push(`💨 Strong Winds forecasted (> ${hazardCriteria.wind.threshold} mph).`);
       }
       if (hazardsDetected.temp) {
-        messages.push(`🔥 High Temperature forecasted (> ${hazardCriteria.temp.threshold}°F).`);
+        messages.push(`🌡️ High Temperature forecasted (> ${hazardCriteria.temp.threshold}°F).`);
       }
       if (hazardsDetected.rh) {
         messages.push(`🔻 Low RH forecasted (< ${hazardCriteria.rh.threshold}%).`);
