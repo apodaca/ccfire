@@ -1,42 +1,62 @@
 body {
-    font-family: Arial, sans-serif;
-    margin: 0;
-    padding: 1rem;
-    background: #f4f4f4;
-  }
-  h1 {
-    font-size: 1.25rem;
-    text-align: center;
-    margin-bottom: 1rem;
-  }
-  .map-container {
-    position: relative;
-    width: 100%; max-width: 400px;
-    margin: auto;
-  }
-  .map-container object {
-    width: 100%;
-    height: auto;
-    display: block;
-  }
-  .weather-box {
-    position: absolute;
-    background-color: gold;
-    color: #000;
-    font-weight: bold;
-    padding: 0.5rem;
-    border-radius: 5px;
-    text-align: center;
-    width: 120px;
-  }
-  #garcia-box { top: 80%; left: 40%; transform: translateX(-50%); }
-  #san-luis-box { top: 55%; left: 50%; transform: translateX(-50%); }
-  #fort-garland-box { top: 30%; left: 50%; transform: translateX(-50%); }
-  
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 1rem;
+  background: #f4f4f4;
+}
+
+h1 {
+  font-size: 1.5rem;
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.map-container {
+  position: relative;
+  width: 100%;
+  max-width: 800px;
+  margin: 1rem auto;
+}
+
+.map-container object {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.weather-box {
+  position: absolute;
+  background-color: gold;
+  color: #000;
+  font-weight: bold;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  text-align: center;
+  width: 140px;
+  box-shadow: 0 3px 6px rgba(0,0,0,0.2);
+  cursor: pointer;
+  user-select: none;
+  transition: transform 0.15s ease, background-color 0.15s ease;
+}
+
+.weather-box:hover {
+  transform: translateY(-3px);
+  background-color: #ffd700;
+}
+
+.weather-box:active {
+  transform: scale(0.95);
+  background-color: #e5c100;
+}
+
+#garcia-box { top: 80%; left: 40%; transform: translateX(-50%); }
+#san-luis-box { top: 55%; left: 50%; transform: translateX(-50%); }
+#fort-garland-box { top: 30%; left: 50%; transform: translateX(-50%); }
+
 .hazard {
   font-size: 2.5rem;
   padding: 0.75rem 1rem;
-  margin: 0.5rem auto;
+  margin: 0.75rem auto;
   border-radius: 10px;
   border: 2px solid #bbb;
   text-align: center;
@@ -47,7 +67,12 @@ body {
   background-color: #fff;
   box-shadow: 0 3px 6px rgba(0,0,0,0.1);
   width: 80%;
-  max-width: 320px;
+  max-width: 350px;
+}
+
+.hazard:hover {
+  opacity: 0.8;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
 }
 
 .hazard span {
@@ -68,7 +93,6 @@ body {
   visibility: visible;
 }
 
-/* Immediate visual feedback on tap/click */
 .hazard:active {
   transform: scale(0.95);
   box-shadow: 0 1px 3px rgba(0,0,0,0.2);
@@ -80,5 +104,3 @@ body {
   50% { transform: scale(1.1); opacity: 0.8; }
   100% { transform: scale(1); opacity: 1; }
 }
-
-  
