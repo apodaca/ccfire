@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Costilla County Fire Weather</title>
+  <title>San Luis Valley Fire Weather</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap" rel="stylesheet">
@@ -13,36 +13,29 @@
   <div class="app-container">
     <header class="app-header">
       <div class="header-content">
-        <h1>🔥 Costilla County Fire Weather</h1>
-        <p class="subtitle">Real-time localized forecasts and burn advisories</p>
+        <h1>🔥 San Luis Valley Fire Weather</h1>
+        <p class="subtitle">Real-time localized forecasts, burn advisories, and critical fire weather data.</p>
       </div>
     </header>
 
     <main class="dashboard">
-      <div class="map-section section-card">
-        <h2>County Map</h2>
-        <p class="instruction">Select a location to view details.</p>
-        <div class="map-container">
-          <!-- We keep the SVG as an object, and position markers over it -->
-          <object type="image/svg+xml" data="cos_county2.svg" class="county-svg" id="county-svg"></object>
-          
-          <div id="garcia-marker" class="map-marker" data-town="Garcia" aria-label="Garcia">
-            <div class="marker-dot"></div>
-            <span class="marker-label">Garcia</span>
-          </div>
-          
-          <div id="san-luis-marker" class="map-marker" data-town="San Luis" aria-label="San Luis">
-            <div class="marker-dot"></div>
-            <span class="marker-label">San Luis</span>
-          </div>
-          
-          <div id="fort-garland-marker" class="map-marker" data-town="Fort Garland" aria-label="Fort Garland">
-            <div class="marker-dot"></div>
-            <span class="marker-label">Fort Garland</span>
-          </div>
+      <!-- Left Sidebar: Region & Location Selection -->
+      <div class="sidebar section-card">
+        <h2>Select Region</h2>
+        <div class="custom-select">
+          <select id="county-select" aria-label="Select County">
+            <!-- Populated by JS -->
+          </select>
+        </div>
+
+        <h3 class="mt-2">Locations</h3>
+        <p class="instruction">Select a specific location to retrieve localized NWS point forecasts and Fire Weather Zone alerts.</p>
+        <div id="location-list" class="location-list">
+          <!-- Populated by JS -->
         </div>
       </div>
 
+      <!-- Right Main Content: Weather Details -->
       <div class="details-section section-card">
         <div id="town-header" class="town-header">
           <h2 id="selected-town-name">Select a Location</h2>
@@ -53,7 +46,7 @@
             <div class="advisory-icon" id="advisory-icon">ℹ️</div>
             <div class="advisory-content">
               <h3 id="advisory-title">Awaiting Selection</h3>
-              <p id="advisory-message">Please select a town on the map to see burn advisories.</p>
+              <p id="advisory-message">Please select a location to see burn advisories.</p>
             </div>
             <button id="toggle-checklist-btn" class="toggle-checklist-btn hidden">Safety Checklist</button>
         </div>
@@ -61,11 +54,11 @@
         <div id="burn-checklist" class="burn-checklist hidden">
           <h4>✅ Burn Safety Checklist</h4>
           <ul>
-            <li>📞 Call dispatch to notify them of your controlled burn: <strong>(719) 589-5807</strong></li>
+            <li>📞 Call your local dispatch to notify them of your controlled burn.</li>
             <li>🧯 Ensure water and tools are on hand in case of an emergency escape.</li>
             <li>🚜 Create firebreaks by clearing dry vegetation around the burn area.</li>
             <li>👥 Never burn alone — always have help available.</li>
-            <li>🌤️ Monitor the weather continuously, as conditions change rapidly.</li>
+            <li>🌤️ Monitor the weather continuously, especially for sudden wind shifts or gusts.</li>
             <li>🔥 Stay with the fire until it is completely out and cold to the touch.</li>
             <li>📞 Call dispatch again when the burn is fully extinguished.</li>
           </ul>
@@ -74,13 +67,12 @@
         <div id="forecast-container" class="forecast-container">
           <div class="forecast-header-row">
             <h3>3-Hour Fire Weather Blocks</h3>
-            <p class="forecast-subtitle">Anticipated conditions for the next 48 hours. Worst-case conditions shown per block.</p>
+            <p class="forecast-subtitle">Worst-case conditions for each block. Watch for high gusts and dry thunderstorms.</p>
           </div>
           <div id="blocks-grid" class="blocks-grid">
             <div class="placeholder-msg">Forecast data will appear here.</div>
           </div>
         </div>
-
       </div>
     </main>
 
@@ -95,23 +87,23 @@
         <div class="edu-card">
           <div class="edu-icon">🔻</div>
           <h3>Relative Humidity (RH)</h3>
-          <p>When RH drops below 20%, fine fuels (grass, needles) dry rapidly quickly, making them highly flammable.</p>
+          <p>When RH drops below 20%, fine fuels (grass, needles) dry rapidly, making them highly flammable.</p>
         </div>
         <div class="edu-card">
           <div class="edu-icon">💨</div>
-          <h3>Wind Speed & Gusts</h3>
-          <p>Wind is the primary driver of fire spread. It supplies oxygen, pushes flames, and transports embers.</p>
+          <h3>Winds & Gusts</h3>
+          <p>Sustained wind drives fire spread, but sudden gusts easily cross firebreaks and cause spot fires miles away.</p>
         </div>
         <div class="edu-card">
           <div class="edu-icon">⚡</div>
-          <h3>Red Flag Warnings</h3>
-          <p>Issued by the NWS when warm temperatures, very low humidities, and stronger winds combine.</p>
+          <h3>Dry Thunderstorms</h3>
+          <p>Thunderstorms without rain produce abundant lightning (primary ignition) and erratic downdraft winds.</p>
         </div>
       </div>
     </section>
 
     <footer class="app-footer">
-      <p>Designed by Gilbert Apodaca, Costilla County Fire 4</p>
+      <p>Data provided by the NWS National Digital Forecast Database (NDFD) & Weather.gov API</p>
       <div class="footer-links">
         <a href="https://csfs.colostate.edu/wildfire-mitigation/" target="_blank">Colorado State Forest Service</a>
         <a href="https://www.weather.gov/fire/" target="_blank">NWS Fire Weather</a>

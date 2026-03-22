@@ -33,14 +33,14 @@ body {
 }
 
 .app-container {
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
   padding: 2rem;
 }
 
 header.app-header {
   text-align: center;
-  margin-bottom: 3rem;
+  margin-bottom: 2rem;
   padding-bottom: 2rem;
   border-bottom: 1px solid var(--border-color);
 }
@@ -63,7 +63,7 @@ h1 {
 
 .dashboard {
   display: grid;
-  grid-template-columns: 1fr 2fr;
+  grid-template-columns: 350px 1fr;
   gap: 2rem;
   margin-bottom: 3rem;
 }
@@ -90,80 +90,76 @@ h2 {
   margin-bottom: 0.5rem;
 }
 
+.mt-2 {
+  margin-top: 2rem;
+}
+
 .instruction {
   color: var(--text-secondary);
-  font-size: 0.875rem;
+  font-size: 0.85rem;
   margin-top: 0;
   margin-bottom: 1.5rem;
 }
 
-/* Map Section */
-.map-container {
+/* Sidebar Specifics */
+.custom-select {
   position: relative;
   width: 100%;
-  aspect-ratio: 1; /* Keeping it roughly square for the SVG */
-  background: rgba(0,0,0,0.2);
-  border-radius: 0.5rem;
-  overflow: hidden;
 }
-
-.county-svg {
+.custom-select select {
   width: 100%;
-  height: 100%;
-  opacity: 0.8;
-  filter: drop-shadow(0 0 5px rgba(0,0,0,0.5));
+  padding: 0.8rem 1rem;
+  background: rgba(0,0,0,0.3);
+  border: 1px solid var(--border-color);
+  color: #fff;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  font-family: 'Inter', sans-serif;
+  appearance: none;
+  cursor: pointer;
+}
+.custom-select select:focus {
+  outline: none;
+  border-color: var(--caution);
+}
+.custom-select::after {
+  content: "▼";
+  position: absolute;
+  top: 50%;
+  right: 1rem;
+  transform: translateY(-50%);
+  color: var(--text-secondary);
+  pointer-events: none;
+  font-size: 0.8rem;
 }
 
-.map-marker {
-  position: absolute;
+.location-list {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  gap: 0.5rem;
+}
+
+.location-item {
+  padding: 0.8rem 1rem;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border-color);
+  border-radius: 0.5rem;
   cursor: pointer;
-  transition: transform 0.2s;
-  z-index: 10;
+  transition: all 0.2s;
+  font-weight: 500;
+  display: flex;
+  justify-content: space-between;
 }
 
-.map-marker:hover {
-  transform: scale(1.1);
+.location-item:hover {
+  background: rgba(255,255,255,0.08);
+  transform: translateX(4px);
 }
 
-.marker-dot {
-  width: 16px;
-  height: 16px;
-  background-color: var(--safe);
-  border-radius: 50%;
-  position: relative;
-  box-shadow: 0 0 10px rgba(0,0,0,0.5);
-}
-
-.marker-dot::after {
-  content: '';
-  position: absolute;
-  top: -4px;
-  left: -4px;
-  right: -4px;
-  bottom: -4px;
-  border-radius: 50%;
-  border: 2px solid var(--safe);
-  animation: pulse 2s infinite;
-  opacity: 0.5;
-}
-
-/* Define Positions based on existing CSS top/left values */
-/* We'll adjust them to fit a 1:1 map container properly */
-#garcia-marker { top: 80%; left: 40%; transform: translate(-50%, -50%); }
-#san-luis-marker { top: 55%; left: 50%; transform: translate(-50%, -50%); }
-#fort-garland-marker { top: 30%; left: 50%; transform: translate(-50%, -50%); }
-
-.marker-label {
-  margin-top: 0.5rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  background: rgba(0,0,0,0.7);
-  padding: 0.2rem 0.5rem;
-  border-radius: 4px;
-  white-space: nowrap;
+.location-item.active {
+  background: var(--caution-bg);
+  border-color: var(--caution);
+  color: #fcd34d;
 }
 
 /* Selected Details */
@@ -188,6 +184,7 @@ h2 {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  margin-top: 1rem;
 }
 
 .nws-alert {
@@ -286,7 +283,7 @@ h2 {
 
 .blocks-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 1rem;
 }
 
@@ -296,26 +293,32 @@ h2 {
   border-radius: 0.5rem;
   padding: 1rem;
   transition: transform 0.2s, background 0.2s;
+  position: relative;
 }
 
-.forecast-block:hover {
-  transform: translateY(-2px);
-  background: rgba(255, 255, 255, 0.05);
+.forecast-block.block-extreme {
+  border-color: rgba(239, 68, 68, 0.8);
+  background: linear-gradient(to bottom, rgba(239, 68, 68, 0.15), rgba(239, 68, 68, 0.05));
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.2);
 }
 
 .forecast-block.block-danger {
-  border-color: rgba(239, 68, 68, 0.5);
-  background: linear-gradient(to bottom, rgba(239, 68, 68, 0.05), transparent);
+  border-color: rgba(245, 158, 11, 0.6);
+  background: linear-gradient(to bottom, rgba(245, 158, 11, 0.1), transparent);
 }
 
 .block-time {
   font-weight: 700;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   margin-bottom: 0.75rem;
   text-align: center;
   border-bottom: 1px solid var(--border-color);
   padding-bottom: 0.5rem;
   color: var(--text-primary);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.4rem;
 }
 
 .block-stat {
@@ -323,13 +326,29 @@ h2 {
   justify-content: space-between;
   font-size: 0.875rem;
   margin-bottom: 0.4rem;
+  border-bottom: 1px dashed rgba(255,255,255,0.05);
+  padding-bottom: 0.2rem;
 }
 
 .stat-label { color: var(--text-secondary); }
-.stat-val { font-weight: 600; }
+.stat-val { font-weight: 600; text-align: right; }
 
 .val-danger { color: var(--danger); font-weight: 700; }
-.val-caution { color: var(--caution); }
+.val-caution { color: var(--caution); font-weight: 700; }
+
+.thunderstorm-indicator {
+  margin-top: 0.5rem;
+  padding: 0.4rem;
+  background: rgba(245, 158, 11, 0.1);
+  border-radius: 4px;
+  border-left: 3px solid var(--caution);
+  font-size: 0.8rem;
+  color: #fcd34d;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
 
 /* Education Section */
 .education-section h2 { text-align: center; margin-bottom: 2rem; }
@@ -367,11 +386,6 @@ h2 {
 .footer-links a:hover { color: #fcd34d; text-decoration: underline; }
 
 /* Animations */
-@keyframes pulse {
-  0% { transform: scale(1); opacity: 0.8; }
-  100% { transform: scale(2); opacity: 0; }
-}
-
 @keyframes pulse-border {
   0% { border-color: rgba(239, 68, 68, 1); box-shadow: 0 0 0 rgba(239, 68, 68, 0.4); }
   50% { border-color: rgba(239, 68, 68, 0.5); box-shadow: 0 0 10px rgba(239, 68, 68, 0.2); }
