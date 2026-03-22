@@ -5,173 +5,278 @@ const hazardCriteria = {
   rh: { threshold: 20 }     // RH threshold in %
 };
 
-// Define which conditions trigger a red flag
-const redFlagConditions = {
-  requireWind: true,
-  requireTempAndRh: false,  // Temp and RH both required
-  requireAnyTwo: false     // Any two hazards trigger red flag
-};
-
-// Town definitions
+// Town coordinates and marker IDs
 const towns = [
-  { name: 'Garcia', lat: 37.0001, lon: -105.6000, el: document.getElementById('garcia-box') },
-  { name: 'San Luis', lat: 37.1995, lon: -105.4236, el: document.getElementById('san-luis-box') },
-  { name: 'Fort Garland', lat: 37.5111, lon: -105.4381, el: document.getElementById('fort-garland-box') }
+  { name: 'Garcia', lat: 37.0001, lon: -105.6000, id: 'garcia-marker' },
+  { name: 'San Luis', lat: 37.1995, lon: -105.4236, id: 'san-luis-marker' },
+  { name: 'Fort Garland', lat: 37.5111, lon: -105.4381, id: 'fort-garland-marker' }
 ];
 
-// Check for red flag based on active hazards and chosen criteria
-function checkRedFlag(hazards) {
-  const { wind, temp, rh } = hazards;
-
-  if (redFlagConditions.requireWind && wind) return true;
-  if (redFlagConditions.requireTempAndRh && temp && rh) return true;
+// Initialize application
+document.addEventListener('DOMContentLoaded', () => {
+  setupMarkers();
   
-  const activeHazardsCount = [wind, temp, rh].filter(Boolean).length;
-  if (redFlagConditions.requireAnyTwo && activeHazardsCount >= 2) return true;
+  // Toggle Safety Checklist
+  const toggleBtn = document.getElementById('toggle-checklist-btn');
+  const checklist = document.getElementById('burn-checklist');
+  toggleBtn.addEventListener('click', () => {
+    const isHidden = checklist.classList.contains('hidden');
+    if (isHidden) {
+      checklist.classList.remove('hidden');
+      toggleBtn.innerText = 'Hide Checklist';
+    } else {
+      checklist.classList.add('hidden');
+      toggleBtn.innerText = 'Safety Checklist';
+    }
+  });
 
-  return false;
+  // Select San Luis by default
+  selectTown(towns.find(t => t.name === 'San Luis'));
+});
+
+function setupMarkers() {
+  towns.forEach(town => {
+    const marker = document.getElementById(town.id);
+    if(marker) {
+      marker.addEventListener('click', () => {
+        selectTown(town);
+      });
+    }
+  });
 }
 
-// Fetch weather data for each town
-towns.forEach(town => {
-  fetch(`https://api.weather.gov/points/${town.lat},${town.lon}`)
-    .then(res => res.json())
-    .then(data => {
-      if (!data.properties || !data.properties.forecastHourly) {
-        throw new Error(`Missing forecast data for ${town.name}`);
-      }
-      town.hourlyURL = data.properties.forecastHourly;
-      return fetch(town.hourlyURL);
-    })
-    .then(res => res.json())
-    .then(forecast => {
-      const periods = forecast.properties.periods.slice(0, 12);
-      town.periods = periods;
-      const firstHour = periods[0];
+async function selectTown(town) {
+  // Update UI selection state
+  document.getElementById('selected-town-name').innerText = `${town.name} Forecast`;
+  
+  const blocksGrid = document.getElementById('blocks-grid');
+  blocksGrid.innerHTML = `
+    <div style="grid-column: 1 / -1; display: flex; align-items: center; justify-content: center; padding: 2rem;">
+      <div class="loading-spinner"></div>
+      <span style="margin-left: 1rem;">Fetching NWS data...</span>
+    </div>
+  `;
 
-      let icons = "";
-      periods.forEach(p => {
-        const windSpeed = parseInt(p.windSpeed);
-        const hazards = {
-          wind: !isNaN(windSpeed) && windSpeed >= hazardCriteria.wind.threshold,
-          temp: p.temperature >= hazardCriteria.temp.threshold,
-          rh: p.relativeHumidity && p.relativeHumidity.value !== undefined && p.relativeHumidity.value <= hazardCriteria.rh.threshold
-        };
+  // Provide realistic visual feedback on the map by hiding the advisory momentarily
+  document.getElementById('burn-advisory-banner').className = 'burn-advisory-banner hidden';
+  document.getElementById('nws-alerts-container').innerHTML = '';
+  document.getElementById('toggle-checklist-btn').classList.add('hidden');
 
-        if (hazards.wind && !icons.includes('💨')) icons += '💨';
-        if (hazards.temp && !icons.includes('🌡️')) icons += '🌡️';
-        if (hazards.rh && !icons.includes('🔻')) icons += '🔻';
-      });
+  try {
+    // 1. Fetch NWS Alerts for this point
+    const alertsRes = await fetch(`https://api.weather.gov/alerts/active?point=${town.lat},${town.lon}`);
+    const alertsData = await alertsRes.json();
+    const alerts = alertsData.features || [];
 
-      // Check for red flag using flexible criteria
-      const hazardsDetected = {
-        wind: icons.includes('💨'),
-        temp: icons.includes('🌡️'),
-        rh: icons.includes('🔻')
-      };
-      const isRedFlag = checkRedFlag(hazardsDetected);
-      town.el.style.backgroundColor = isRedFlag ? 'red' : 'gold';
-
-      town.el.innerHTML = `${town.name}<br>
-        Temp: ${firstHour.temperature}°F<br>
-        Wind: ${firstHour.windSpeed}<br>
-        RH: ${firstHour.relativeHumidity && firstHour.relativeHumidity.value !== undefined ? firstHour.relativeHumidity.value + '%' : 'N/A'}<br>
-        ${icons}`;
-
-      // Hazard bar and messages
-      const hazardBar = document.getElementById('hazard-bar');
-      hazardBar.innerHTML = '';
-
-      const addHazardIcon = (id, icon, label, isActive) => {
-        const div = document.createElement('div');
-        div.className = `hazard ${isActive ? 'active' : ''}`;
-        div.id = id;
-        div.innerHTML = `${icon}<span>${label}</span>`;
-        hazardBar.appendChild(div);
-      };
-
-      addHazardIcon('tempIcon', '🌡️', 'High Temp', hazardsDetected.temp);
-      addHazardIcon('rhIcon', '🔻', 'Low RH', hazardsDetected.rh);
-      addHazardIcon('windIcon', '💨', 'Strong Wind', hazardsDetected.wind);
-
-      const hazardMessage = document.getElementById('hazard-message');
-      const burnAdvisory = document.getElementById('burn-advisory');
-      let messages = [];
-
-      if (hazardsDetected.wind) {
-        messages.push(`💨 Strong Winds forecasted (> ${hazardCriteria.wind.threshold} mph).`);
-      }
-      if (hazardsDetected.temp) {
-        messages.push(`🌡️ High Temperature forecasted (> ${hazardCriteria.temp.threshold}°F).`);
-      }
-      if (hazardsDetected.rh) {
-        messages.push(`🔻 Low RH forecasted (< ${hazardCriteria.rh.threshold}%).`);
-      }
-
-      if (isRedFlag) {
-        messages.push('⚠️ Critical fire hazards detected—DO NOT BURN.');
-        burnAdvisory.style.display = 'none';
-      } else {
-        burnAdvisory.style.display = 'block';
-      }
-
-      hazardMessage.innerHTML = messages.join('<br>');
-    })
-    .catch(err => {
-      town.el.innerText = `${town.name}: Weather unavailable`;
-      console.error(`Failed to load weather for ${town.name}`, err);
+    // Filter for fire-weather related alerts
+    const fireAlerts = alerts.filter(f => {
+      const event = f.properties.event || '';
+      return event.toLowerCase().includes('red flag') || 
+             event.toLowerCase().includes('fire weather') ||
+             event.toLowerCase().includes('wind advisory') ||
+             event.toLowerCase().includes('high wind');
     });
-});
 
-// Forecast table
-const tableContainer = document.createElement('div');
-tableContainer.id = 'forecast-table';
-tableContainer.style.marginTop = '1rem';
-document.body.appendChild(tableContainer);
+    const isRedFlag = fireAlerts.some(f => f.properties.event.toLowerCase().includes('red flag'));
 
-towns.forEach(town => {
-  town.el.style.cursor = 'pointer';
-  town.el.addEventListener('click', () => {
-    if (!town.periods) return;
-    const rows = town.periods.map(p => {
-      const date = new Date(p.startTime);
-      const time = date.toLocaleString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true });
-      const windSpeed = parseInt(p.windSpeed);
-      const rhValue = p.relativeHumidity?.value;
-      const windDanger = windSpeed >= hazardCriteria.wind.threshold;
-      const tempDanger = p.temperature >= hazardCriteria.temp.threshold;
-      const rhDanger = rhValue !== undefined && rhValue <= hazardCriteria.rh.threshold;
+    // Render Alerts
+    const alertsContainer = document.getElementById('nws-alerts-container');
+    fireAlerts.forEach(alert => {
+      const div = document.createElement('div');
+      div.className = 'nws-alert';
+      div.innerHTML = `⚠️ <span>${alert.properties.event}</span>`;
+      div.title = alert.properties.instruction || alert.properties.description || '';
+      alertsContainer.appendChild(div);
+    });
 
-      return `<tr>
-        <td>${time}</td>
-        <td style="${tempDanger ? 'background-color: #ffcccc;' : ''}">${p.temperature}°F ${tempDanger ? '🌡️' : ''}</td>
-        <td style="${windDanger ? 'background-color: #ffcccc;' : ''}">${p.windSpeed} ${windDanger ? '💨' : ''}</td>
-        <td style="${rhDanger ? 'background-color: #ffcccc;' : ''}">${rhValue !== undefined ? rhValue + '%' : 'N/A'} ${rhDanger ? '🔻' : ''}</td>
-        <td>${p.shortForecast}</td>
-      </tr>`;
-    }).join('');
+    // 2. Fetch Forecast Points
+    const pointRes = await fetch(`https://api.weather.gov/points/${town.lat},${town.lon}`);
+    const pointData = await pointRes.json();
+    const hourlyUrl = pointData.properties.forecastHourly;
 
-    tableContainer.innerHTML = `
-      <div style="display: flex; justify-content: space-between; align-items: center;">
-        <h2>${town.name} - 12 Hour Forecast</h2>
-        <button onclick="tableContainer.innerHTML = ''">✖ Close</button>
+    // 3. Fetch Hourly Forecast
+    const hourlyRes = await fetch(hourlyUrl);
+    const hourlyData = await hourlyRes.json();
+    
+    // 4. Process into 3-hour blocks
+    const periods = hourlyData.properties.periods;
+    const blocks = processThreeHourBlocks(periods);
+
+    // Analyze next 12 hours (4 blocks) for base advisory logic
+    const nearTerm = blocks.slice(0, 4);
+    let highestNearTermWind = 0;
+    let lowestNearTermRH = 100;
+    let highestNearTermTemp = 0;
+
+    nearTerm.forEach(b => {
+      if (b.maxWind > highestNearTermWind) highestNearTermWind = b.maxWind;
+      if (b.minRH < lowestNearTermRH) lowestNearTermRH = b.minRH;
+      if (b.maxTemp > highestNearTermTemp) highestNearTermTemp = b.maxTemp;
+    });
+
+    // Logic: If there is a Red Flag Warning -> CRITICAL DANGER
+    // Else If wind >= 20 OR (RH <= 20 AND Temp >= 65) -> DANGER
+    // Else If wind >= 15 OR RH <= 25 -> CAUTION
+    // Else -> SAFE
+    let advisoryLevel = 'safe';
+    let advisoryTitle = 'Conditions appear safe.';
+    let advisoryMessage = 'Burn with caution. Ensure you have clearance from dispatch.';
+
+    if (isRedFlag) {
+      advisoryLevel = 'danger';
+      advisoryTitle = 'CRITICAL DANGER: DO NOT BURN';
+      advisoryMessage = 'A Red Flag Warning is active. Open burning is highly dangerous and likely prohibited. Do not ignite any fires.';
+    } else if (highestNearTermWind >= hazardCriteria.wind.threshold || (lowestNearTermRH <= hazardCriteria.rh.threshold && highestNearTermTemp >= hazardCriteria.temp.threshold)) {
+      advisoryLevel = 'danger';
+      advisoryTitle = 'DANGER: DO NOT BURN';
+      advisoryMessage = `Hazardous conditions ahead (Wind up to ${highestNearTermWind}mph, RH down to ${lowestNearTermRH}%). Burning is strongly discouraged.`;
+    } else if (highestNearTermWind >= 15 || lowestNearTermRH <= 25) {
+      advisoryLevel = 'caution';
+      advisoryTitle = 'ELEVATED RISK: Use Extreme Caution';
+      advisoryMessage = 'Conditions are marginal. If you must burn, monitor the wind closely and keep tools/water ready. Call dispatch prior to ignition.';
+    }
+
+    renderAdvisoryBanner(advisoryLevel, advisoryTitle, advisoryMessage);
+    renderBlocksGrid(blocks);
+
+  } catch (error) {
+    console.error("Error fetching data:", error);
+    blocksGrid.innerHTML = `
+      <div style="grid-column: 1 / -1; padding: 2rem; color: #fca5a5; text-align: center;">
+        <p>⚠️ Failed to load weather data from the National Weather Service.</p>
+        <p style="font-size: 0.85rem;">Please try again later or check weather.gov directly.</p>
       </div>
-      <table style="border-collapse: collapse; width: 100%;">
-        <thead>
-          <tr>
-            <th>Time</th><th>Temp</th><th>Wind</th><th>RH</th><th>Forecast</th>
-          </tr>
-        </thead>
-        <tbody>${rows}</tbody>
-      </table>
     `;
-  });
-});
+  }
+}
 
-// Toggle Checklist
-function toggleChecklist(event) {
-  const checklist = document.getElementById('burn-checklist');
-  const button = event.target;
-  checklist.style.display = checklist.style.display === 'none' ? 'block' : 'none';
-  button.innerText = checklist.style.display === 'none' ? 'Show Burn Checklist' : 'Hide Burn Checklist';
+function processThreeHourBlocks(periods) {
+  // Take up to 48 hours (if available) -> 16 blocks
+  const maxHours = Math.min(periods.length, 48);
+  const blocks = [];
+  
+  for (let i = 0; i < maxHours; i += 3) {
+    const chunk = periods.slice(i, i + 3);
+    if (chunk.length === 0) break;
+    
+    // Initial Block Date/Time string
+    const startTime = new Date(chunk[0].startTime);
+    const endTime = new Date(chunk[chunk.length - 1].endTime);
+    
+    // Formatting: "Today 12pm - 3pm" or "Mon 3pm - 6pm"
+    const dayFormatter = new Intl.DateTimeFormat('en-US', { weekday: 'short' });
+    const timeFormatter = new Intl.DateTimeFormat('en-US', { hour: 'numeric' });
+    
+    // Helper to determine if it's "Today"
+    const isToday = startTime.toDateString() === new Date().toDateString();
+    const dayStr = isToday ? 'Today' : dayFormatter.format(startTime);
+    
+    const timeStr = `${timeFormatter.format(startTime).replace(' ', '').toLowerCase()} - ${timeFormatter.format(endTime).replace(' ', '').toLowerCase()}`;
+    const blockTitle = `${dayStr} ${timeStr}`;
+
+    let maxTemp = -999;
+    let minRH = 999;
+    let maxWind = 0;
+    let summaryIcon = chunk[0].shortForecast; // just a rough baseline
+
+    chunk.forEach(hour => {
+      // Temp
+      if (hour.temperature > maxTemp) maxTemp = hour.temperature;
+      
+      // RH
+      if (hour.relativeHumidity && hour.relativeHumidity.value !== undefined) {
+        if (hour.relativeHumidity.value < minRH) {
+          minRH = hour.relativeHumidity.value;
+        }
+      }
+      
+      // Wind speed parsing (usually e.g., "10 to 15 mph")
+      const windSpeedStr = hour.windSpeed;
+      // Extract numbers and take the max
+      const matches = windSpeedStr.match(/\d+/g);
+      if (matches) {
+        matches.forEach(m => {
+          const val = parseInt(m, 10);
+          if (val > maxWind) maxWind = val;
+        });
+      }
+    });
+
+    // Check if this block is hazardous
+    const isDangerous = (maxWind >= hazardCriteria.wind.threshold) || 
+                        (minRH <= hazardCriteria.rh.threshold && maxTemp >= hazardCriteria.temp.threshold);
+
+    blocks.push({
+      title: blockTitle,
+      maxTemp,
+      minRH: minRH === 999 ? 'N/A' : minRH,
+      maxWind,
+      isDangerous
+    });
+  }
+
+  return blocks;
+}
+
+function renderAdvisoryBanner(level, title, message) {
+  const banner = document.getElementById('burn-advisory-banner');
+  const icon = document.getElementById('advisory-icon');
+  const titleEl = document.getElementById('advisory-title');
+  const msgEl = document.getElementById('advisory-message');
+  const checklistBtn = document.getElementById('toggle-checklist-btn');
+
+  banner.className = `burn-advisory-banner status-${level}`;
+  
+  if (level === 'danger') {
+    icon.innerText = '🚫';
+    checklistBtn.classList.add('hidden'); // No checklist if they shouldn't burn
+    // Ensure checklist is hidden too
+    document.getElementById('burn-checklist').classList.add('hidden');
+    checklistBtn.innerText = 'Safety Checklist';
+  } else if (level === 'caution') {
+    icon.innerText = '⚠️';
+    checklistBtn.classList.remove('hidden');
+  } else {
+    icon.innerText = '✅';
+    checklistBtn.classList.remove('hidden');
+  }
+
+  titleEl.innerText = title;
+  msgEl.innerText = message;
+}
+
+function renderBlocksGrid(blocks) {
+  const grid = document.getElementById('blocks-grid');
+  grid.innerHTML = '';
+
+  blocks.forEach(block => {
+    const minRhVal = block.minRH;
+    const tempDanger = block.maxTemp >= hazardCriteria.temp.threshold;
+    const rhDanger = minRhVal !== 'N/A' && minRhVal <= hazardCriteria.rh.threshold;
+    const windDanger = block.maxWind >= hazardCriteria.wind.threshold;
+
+    const div = document.createElement('div');
+    div.className = `forecast-block ${block.isDangerous ? 'block-danger' : ''}`;
+    
+    div.innerHTML = `
+      <div class="block-time">${block.title} ${block.isDangerous ? '🔥' : ''}</div>
+      
+      <div class="block-stat">
+        <span class="stat-label">Max Temp</span>
+        <span class="stat-val ${tempDanger ? 'val-danger' : ''}">${block.maxTemp}°F</span>
+      </div>
+      
+      <div class="block-stat">
+        <span class="stat-label">Min RH</span>
+        <span class="stat-val ${rhDanger ? 'val-danger' : ''}">${minRhVal}%</span>
+      </div>
+      
+      <div class="block-stat">
+        <span class="stat-label">Peak Wind</span>
+        <span class="stat-val ${windDanger ? 'val-danger' : ''}">${block.maxWind} mph</span>
+      </div>
+    `;
+    
+    grid.appendChild(div);
+  });
 }

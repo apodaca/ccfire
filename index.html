@@ -3,66 +3,121 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Costilla County Fire Weather (V2)</title>
+  <title>Costilla County Fire Weather</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h1>🔥 Costilla County Fire Weather (V2)</h1>
+  <div class="app-container">
+    <header class="app-header">
+      <div class="header-content">
+        <h1>🔥 Costilla County Fire Weather</h1>
+        <p class="subtitle">Real-time localized forecasts and burn advisories</p>
+      </div>
+    </header>
 
-  <div id="hazard-bar" style="display: flex; justify-content: center; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem;"></div>
-  <div id="hazard-message" style="text-align: center; font-size: 0.9rem; color: #b30000; font-weight: bold; margin-bottom: 1rem;"></div>
+    <main class="dashboard">
+      <div class="map-section section-card">
+        <h2>County Map</h2>
+        <p class="instruction">Select a location to view details.</p>
+        <div class="map-container">
+          <!-- We keep the SVG as an object, and position markers over it -->
+          <object type="image/svg+xml" data="cos_county2.svg" class="county-svg" id="county-svg"></object>
+          
+          <div id="garcia-marker" class="map-marker" data-town="Garcia" aria-label="Garcia">
+            <div class="marker-dot"></div>
+            <span class="marker-label">Garcia</span>
+          </div>
+          
+          <div id="san-luis-marker" class="map-marker" data-town="San Luis" aria-label="San Luis">
+            <div class="marker-dot"></div>
+            <span class="marker-label">San Luis</span>
+          </div>
+          
+          <div id="fort-garland-marker" class="map-marker" data-town="Fort Garland" aria-label="Fort Garland">
+            <div class="marker-dot"></div>
+            <span class="marker-label">Fort Garland</span>
+          </div>
+        </div>
+      </div>
 
-  <div id="burn-advisory" style="text-align: center; font-size: 0.95rem; background-color: #fff8dc; color: #444; border: 1px solid #e0b94d; padding: 0.75rem 1rem; max-width: 600px; margin: 0 auto 1rem auto; border-radius: 6px;">
-    🔥 <strong>Burn Advisory:</strong> The forecast indicates conditions appear safe. Please burn with caution.<br />
-    Call dispatch to inform them about the controlled burn and verify that it is safe to proceed: <strong>(719) 589-5807</strong>
-    <div id="burn-checklist" style="text-align: left; margin-top: 1rem; font-size: 0.9rem; display: none;">
-      <h4 style="margin-bottom: 0.5rem;">✅ Burn Safety Checklist</h4>
-      <ul style="padding-left: 1.2rem; margin: 0;">
-        <li>📞 Call dispatch to notify them of your controlled burn: <strong>(719) 589-5807</strong></li>
-        <li>🧯 Ensure water and tools are on hand</li>
-        <li>🚜 Create firebreaks by clearing dry vegetation around the burn area</li>
-        <li>👥 Never burn alone — always have help</li>
-        <li>🌤️ Burn only during daylight hours and monitor the weather</li>
-        <li>🔥 Stay with the fire until it is completely out</li>
-        <li>📞 Call dispatch again when the burn is complete</li>
-      </ul>
-    </div>
-    <div style="text-align: center; margin-top: 0.5rem;">
-      <button onclick="toggleChecklist()" style="font-size: 0.85rem; padding: 0.4rem 0.75rem;">Show Burn Checklist</button>
-    </div>
+      <div class="details-section section-card">
+        <div id="town-header" class="town-header">
+          <h2 id="selected-town-name">Select a Location</h2>
+          <div id="nws-alerts-container" class="alerts-container"></div>
+        </div>
+        
+        <div id="burn-advisory-banner" class="burn-advisory-banner">
+            <div class="advisory-icon" id="advisory-icon">ℹ️</div>
+            <div class="advisory-content">
+              <h3 id="advisory-title">Awaiting Selection</h3>
+              <p id="advisory-message">Please select a town on the map to see burn advisories.</p>
+            </div>
+            <button id="toggle-checklist-btn" class="toggle-checklist-btn hidden">Safety Checklist</button>
+        </div>
+
+        <div id="burn-checklist" class="burn-checklist hidden">
+          <h4>✅ Burn Safety Checklist</h4>
+          <ul>
+            <li>📞 Call dispatch to notify them of your controlled burn: <strong>(719) 589-5807</strong></li>
+            <li>🧯 Ensure water and tools are on hand in case of an emergency escape.</li>
+            <li>🚜 Create firebreaks by clearing dry vegetation around the burn area.</li>
+            <li>👥 Never burn alone — always have help available.</li>
+            <li>🌤️ Monitor the weather continuously, as conditions change rapidly.</li>
+            <li>🔥 Stay with the fire until it is completely out and cold to the touch.</li>
+            <li>📞 Call dispatch again when the burn is fully extinguished.</li>
+          </ul>
+        </div>
+
+        <div id="forecast-container" class="forecast-container">
+          <div class="forecast-header-row">
+            <h3>3-Hour Fire Weather Blocks</h3>
+            <p class="forecast-subtitle">Anticipated conditions for the next 48 hours. Worst-case conditions shown per block.</p>
+          </div>
+          <div id="blocks-grid" class="blocks-grid">
+            <div class="placeholder-msg">Forecast data will appear here.</div>
+          </div>
+        </div>
+
+      </div>
+    </main>
+
+    <section class="education-section section-card">
+      <h2>Understanding Fire Behavior & Weather</h2>
+      <div class="edu-grid">
+        <div class="edu-card">
+          <div class="edu-icon">🌡️</div>
+          <h3>Temperatures</h3>
+          <p>Hot air pre-heats and dries out fuels, meaning they require less heat to ignite and burn faster.</p>
+        </div>
+        <div class="edu-card">
+          <div class="edu-icon">🔻</div>
+          <h3>Relative Humidity (RH)</h3>
+          <p>When RH drops below 20%, fine fuels (grass, needles) dry rapidly quickly, making them highly flammable.</p>
+        </div>
+        <div class="edu-card">
+          <div class="edu-icon">💨</div>
+          <h3>Wind Speed & Gusts</h3>
+          <p>Wind is the primary driver of fire spread. It supplies oxygen, pushes flames, and transports embers.</p>
+        </div>
+        <div class="edu-card">
+          <div class="edu-icon">⚡</div>
+          <h3>Red Flag Warnings</h3>
+          <p>Issued by the NWS when warm temperatures, very low humidities, and stronger winds combine.</p>
+        </div>
+      </div>
+    </section>
+
+    <footer class="app-footer">
+      <p>Designed by Gilbert Apodaca, Costilla County Fire 4</p>
+      <div class="footer-links">
+        <a href="https://csfs.colostate.edu/wildfire-mitigation/" target="_blank">Colorado State Forest Service</a>
+        <a href="https://www.weather.gov/fire/" target="_blank">NWS Fire Weather</a>
+      </div>
+    </footer>
   </div>
-
-  <div class="map-container">
-    <object type="image/svg+xml" data="cos_county2.svg"></object>
-    <div id="garcia-box" class="weather-box"></div>
-    <div id="san-luis-box" class="weather-box"></div>
-    <div id="fort-garland-box" class="weather-box"></div>
-  </div>
-
   <script src="script.js"></script>
-<section style="max-width: 800px; margin: 2rem auto; padding: 1rem; background: #fff; border-radius: 6px; border: 1px solid #ccc;">
-  <h2>🔥 Understanding Fire Weather Hazards</h2>
-  <p>Fire behavior is heavily influenced by weather conditions. Here's how each key factor contributes to fire risk:</p>
-  <ul style="line-height: 1.6;">
-    <li><strong>🌡️ High Temperatures:</strong> Hot air dries out vegetation and makes it easier for fires to ignite and spread.</li>
-    <li><strong>💧 Low Relative Humidity (RH):</strong> When RH drops below 20%, fuels like grass and brush dry quickly, making them more flammable.</li>
-    <li><strong>💨 Strong Winds:</strong> Wind can quickly fan flames and push fire fronts across long distances. Gusty conditions are especially dangerous.</li>
-    <li><strong>⚡ Dry Lightning:</strong> Thunderstorms that produce lightning but little rain can ignite wildfires in dry conditions.</li>
-    <li><strong>🌿 Fuel Dryness:</strong> Vegetation becomes fuel. When it's dry—especially in spring and late summer—it's more likely to ignite and carry fire.</li>
-    <li><strong>🌵 Drought:</strong> Extended dry periods lower soil and fuel moisture, setting the stage for more intense and unpredictable fires.</li>
-  </ul>
-  <p style="margin-top: 1rem;">For more information on fire preparedness and safety, check out:</p>
-  <ul>
-    <li><a href="https://csfs.colostate.edu/wildfire-mitigation/" target="_blank">Colorado State Forest Service – Wildfire Mitigation</a></li>
-    <li><a href="https://www.weather.gov/fire/" target="_blank">National Weather Service Fire Weather</a></li>
-    <li><a href="https://www.weather.gov/documentation/services-web-api" target="_blank">NOAA Weather Data Source – Weather.gov API</a></li>
-  </ul>
-</section>
-
-<footer style="text-align: center; font-size: 0.85rem; color: #666; margin-top: 2rem; padding: 1rem 0;">
-  Designed by Gilbert Apodaca, Costilla County Fire 4<br>
-  Created: April 2, 2025<br>
-  Last Updated: April 2, 2025
-</footer>
 </body>
 </html>
