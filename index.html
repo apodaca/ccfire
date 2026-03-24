@@ -36,7 +36,6 @@
   <div class="app-container">
     <header class="app-header">
       <div class="header-content">
-        <!-- SVG Professional Icon -->
         <svg class="header-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
         </svg>
@@ -112,6 +111,22 @@
           </table>
         </div>
 
+        <div id="telemetry-metadata" class="telemetry-metadata hidden" aria-live="polite">
+          <div id="telemetry-zone">FORECAST ZONE: PENDING</div>
+          <div id="telemetry-station">OBSERVATION STATION: PENDING</div>
+        </div>
+
+        <!-- Comparison Matrix (Polite Announcing) -->
+        <div id="burn-advisory-banner" class="burn-advisory-banner">
+            <div class="advisory-icon" id="advisory-icon">
+              <!-- Default Icon -->
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+            </div>
+            <div class="advisory-content">
+              <h3 id="advisory-title">AWAITING SELECTION</h3>
+              <p id="advisory-message">Please select a location to evaluate tactical constraints.</p>
+            </div>
+        </div>
         <h2 class="section-title mt-2">NEAR-TERM TACTICAL BLOCKS (3-HR)</h2>
         
         <!-- TACTICAL FUEL SELECTION -->

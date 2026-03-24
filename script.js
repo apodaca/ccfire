@@ -7,10 +7,11 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-// Icons Set (SVG strings)
+// Icons Set (SVG strings exclusively)
 const ICONS = {
   danger: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`,
-  lightning: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>`
+  lightning: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>`,
+  chevron: `<svg class="chevron-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>`
 };
 
 // Global State
@@ -113,15 +114,21 @@ function setupEventListeners() {
   });
 
   btnFetch.addEventListener('click', () => {
-    const latIn = parseFloat(document.getElementById('lat-input').value);
-    const lonIn = parseFloat(document.getElementById('lon-input').value);
-    if (!isNaN(latIn) && !isNaN(lonIn)) {
-      updateCoordinates(latIn, lonIn);
-      fetchEnterpriseData(latIn, lonIn);
+    const latInput = document.getElementById('lat-input');
+    const lonInput = document.getElementById('lon-input');
+    const latVal = parseFloat(latInput.value);
+    const lonVal = parseFloat(lonInput.value);
+
+    // Validation Logic
+    if (isNaN(latVal) || isNaN(lonVal) || latVal < -90 || latVal > 90 || lonVal < -180 || lonVal > 180) {
+      triggerFormError(btnFetch, latInput, lonInput);
+      return;
     }
+
+    updateCoordinates(latVal, lonVal);
+    fetchEnterpriseData(latVal, lonVal);
   });
 
-  // State Management: Fuel Type Selection
   fuelInputs.forEach(input => {
     input.addEventListener('change', (e) => {
       currentFuelType = e.target.value;
@@ -130,6 +137,22 @@ function setupEventListeners() {
       }
     });
   });
+}
+
+function triggerFormError(btn, latInput, lonInput) {
+  btn.classList.add('btn-error', 'shake');
+  latInput.classList.add('input-error', 'shake');
+  lonInput.classList.add('input-error', 'shake');
+  
+  const originalText = btn.innerHTML;
+  btn.innerHTML = 'ERROR: ENTER VALID COORDINATES';
+  
+  setTimeout(() => {
+    btn.classList.remove('btn-error', 'shake');
+    latInput.classList.remove('input-error', 'shake');
+    lonInput.classList.remove('input-error', 'shake');
+    btn.innerHTML = originalText;
+  }, 3000);
 }
 
 function updateCoordinates(lat, lon) {
@@ -153,6 +176,13 @@ async function fetchEnterpriseData(lat, lon) {
   alertsContainer.innerHTML = '';
   document.getElementById('matrix-body').innerHTML = '<tr><td colspan="4" class="empty-state">Loading Primary Data Feeds...</td></tr>';
   document.getElementById('blocks-container').innerHTML = '';
+  
+  const telemetryZoneEl = document.getElementById('telemetry-zone');
+  const telemetryStationEl = document.getElementById('telemetry-station');
+  document.getElementById('telemetry-metadata').classList.add('hidden');
+  
+  telemetryZoneEl.innerText = "FORECAST ZONE: PENDING";
+  telemetryStationEl.innerText = "OBSERVATION STATION: PENDING";
 
   try {
     const pointUrl = `https://api.weather.gov/points/${lat},${lon}`;
@@ -169,17 +199,30 @@ async function fetchEnterpriseData(lat, lon) {
     const stationsUrl = props.observationStations;
     const zoneId = fwzUrl ? fwzUrl.split('/').pop() : null;
 
+    // Parallel Sub-Pipelines
     const promises = [
       fetch(hourlyForecastUrl).then(res => res.json()),
       zoneId ? fetch(`https://api.weather.gov/alerts/active/zone/${zoneId}`).then(res => res.json()) : Promise.resolve(null),
-      fetchGroundTruth(stationsUrl)
+      fetchGroundTruth(stationsUrl),
+      fwzUrl ? fetch(fwzUrl).then(res => res.json()) : Promise.resolve(null) // Fetch Zone Metadata
     ];
 
     const results = await Promise.allSettled(promises);
 
     const forecastData = results[0].status === 'fulfilled' ? results[0].value : null;
     const alertsData = results[1].status === 'fulfilled' ? results[1].value : null;
-    const groundTruthData = results[2].status === 'fulfilled' ? results[2].value : null;
+    const groundTruthResult = results[2].status === 'fulfilled' ? results[2].value : null;
+    const zoneData = results[3].status === 'fulfilled' ? results[3].value : null;
+
+    // Extract Context Data
+    const groundTruthData = groundTruthResult ? groundTruthResult.obsData : null;
+    const stationName = groundTruthResult ? groundTruthResult.stationName : "UNKNOWN";
+    const zoneName = zoneData && zoneData.properties ? zoneData.properties.name : (zoneId || "UNKNOWN");
+
+    // Re-bind Telemetry
+    telemetryZoneEl.innerText = `FORECAST ZONE: ${zoneName.toUpperCase()}`;
+    telemetryStationEl.innerText = `OBSERVATION STATION: ${stationName.toUpperCase()}`;
+    document.getElementById('telemetry-metadata').classList.remove('hidden');
 
     if (alertsData && alertsData.features) {
       renderAlerts(alertsData.features);
@@ -209,12 +252,18 @@ async function fetchGroundTruth(stationsUrl) {
     const stations = listData.features || [];
     if (stations.length === 0) return null;
 
-    const nearestStationId = stations[0].properties.stationIdentifier;
+    const nearestStation = stations[0];
+    const nearestStationId = nearestStation.properties.stationIdentifier;
+    const stationName = nearestStation.properties.name || nearestStationId;
+
     const obsUrl = `https://api.weather.gov/stations/${nearestStationId}/observations/latest`;
     const obsRes = await fetch(obsUrl);
     const obsData = await obsRes.json();
     
-    return obsData.properties;
+    return {
+      obsData: obsData.properties,
+      stationName: stationName
+    };
   } catch (e) {
     console.error("Ground truth pipeline failed", e);
     return null;
@@ -225,7 +274,6 @@ async function fetchGroundTruth(stationsUrl) {
 // Utility: Fine Dead Fuel Moisture & Drivers
 // -----------------------------------------
 function calculateFDFM(tempF, rh) {
-  // Simard (1968) Reference Model Appx
   let rhClamped = Math.max(0, Math.min(100, rh));
   let m = 0;
   if (rhClamped < 10) {
@@ -268,28 +316,58 @@ function evaluateThreatTier(temp, rh, gust, fdfm) {
   };
 }
 
-function getBehaviorText(fuelType, threatTier) {
-  const matrix = {
+// Four-Part Text Synthesis Matrix
+function generateSynthesisText(tiers, fuelType) {
+  const tempMsg = {
+    1: "Temperatures are low, minimizing pre-heating of fuels.",
+    2: "Moderate temperatures are slightly increasing fuel pre-heating.",
+    3: "Elevated temperatures are actively pre-heating the fuel bed.",
+    4: "Extreme temperatures are critically pre-heating fuels and lowering ignition resistance."
+  };
+  
+  const rhMsg = {
+    1: "Moderate RH is allowing fine fuels to recover moisture.",
+    2: "Lowering RH is beginning to slowly desiccate fine fuels.",
+    3: "Low RH is accelerating fine fuel drying and increasing ignition probability.",
+    4: "Critically low RH is driving rapid fine fuel desiccation and intense burning conditions."
+  };
+
+  const gustMsg = {
+    1: "Light winds will limit fire spread primarily to topographical influences.",
+    2: "Moderate wind gusts may increase surface spread rates.",
+    3: "Strong wind gusts will drive active head fire spread and possible short-range spotting.",
+    4: "Extreme wind gusts will drive rapid rates of spread and cause long-range spotting."
+  };
+
+  const fdfmMsg = {
     "Grass": {
-      1: "Creeping and smoldering. Minimal spread rates.",
-      2: "Moderate flanking and backing. Head fire spread possible with localized alignment.",
-      3: "Rapid rates of spread. Fine fuels exhibiting strong ignition receptivity.",
-      4: "Explosive spread rates. Expect wind-driven runs. Fine fuels fully cured."
+      1: "1-Hr fuel moisture remains high, resisting ignition and spread in grassy fuels.",
+      2: "Curing grass fuels are becoming receptive to ignition.",
+      3: "Dry fine fuels in this grass model will support rapid rates of spread.",
+      4: "Critically dry fine fuels in this grass model will support nearly instantaneous ignition and rapid transition to the primary carrier."
     },
     "Brush": {
-      1: "Smoldering in heavy fuels. Little to no spread.",
-      2: "Creeping surface fire. Isolated torching in unburned canopies.",
-      3: "Active surface fire. Frequent torching and group fires.",
-      4: "Intense fire behavior. Sustained crown fire runs. High potential for short-range spotting."
+      1: "Heavy fuel moistures are resisting persistent ignition.",
+      2: "Surface litter provides isolated ignition points beneath the canopy.",
+      3: "Receptive dry brush will support active fire with group torching.",
+      4: "Critically dry brush stands will support intense fire behavior, sustained crown runs, and short-range spotting."
     },
     "Timber": {
-      1: "Creeping surface fire confined to duff and litter layers.",
-      2: "Surface fire with occasional single-tree torching.",
-      3: "Surface fire climbing ladder fuels. Group torching.",
-      4: "Independent crowning possible. High probability of long-range spotting. Extreme resistance to control."
+      1: "Surface spread is confined largely to duff and heavy litter layers.",
+      2: "Occasional single-tree torching is possible in unburned canopies.",
+      3: "Dry ladder fuels will assist fire transitioning into the canopy.",
+      4: "Severely dry timber profiles threaten independent crowning, extreme resistance to control, and long-range spotting."
     }
   };
-  return matrix[fuelType][threatTier] || "Data unavailable for operational parsing.";
+
+  return `
+    <ul style="padding-left: 1.25rem;">
+      <li style="margin-bottom: 0.5rem;">${tempMsg[tiers.temp]}</li>
+      <li style="margin-bottom: 0.5rem;">${rhMsg[tiers.rh]}</li>
+      <li style="margin-bottom: 0.5rem;">${gustMsg[tiers.gust]}</li>
+      <li style="margin-bottom: 0.5rem;">${fdfmMsg[fuelType][tiers.fdfm]}</li>
+    </ul>
+  `;
 }
 
 // -----------------------------------------
@@ -360,7 +438,6 @@ function renderComparisonMatrix(currentForecast, groundTruth) {
     </tr>`;
   }
 
-  // Simplified hardcoded tolerances for the matrix based on general NWCG guidelines
   const rowsHtml = [
     generateRow("TEMPERATURE", fTemp, tTemp, 'F', false, 5, 85),
     generateRow("REL HUMIDITY", fRH, tRH, '%', true, -5, 20),
@@ -380,7 +457,6 @@ function renderTacticalBlocks(periods) {
     const chunk = periods.slice(i, i + 3);
     if (chunk.length === 0) break;
     
-    // Aggregate block limits
     let maxTemp = -999;
     let minRH = 999;
     let maxWind = 0;
@@ -403,10 +479,9 @@ function renderTacticalBlocks(periods) {
     });
 
     if (maxGust === 0 && maxWind > 0) maxGust = maxWind;
-    if (minRH === 999) minRH = 25; // fallback
-    if (maxTemp === -999) maxTemp = 65; // fallback
+    if (minRH === 999) minRH = 25; 
+    if (maxTemp === -999) maxTemp = 65; 
 
-    // Calculate FDFM Base
     const calculatedFDFM = calculateFDFM(maxTemp, minRH);
     
     // Matrix Evaluation
@@ -414,8 +489,8 @@ function renderTacticalBlocks(periods) {
     const blockThreatSeverity = tiers.max;
     const threatDef = THREAT_LEVELS[blockThreatSeverity];
 
-    // Behavior Text Routing
-    const behaviorText = getBehaviorText(currentFuelType, blockThreatSeverity);
+    // Behavior Text Routing Generation (4-part)
+    const behaviorTextHtml = generateSynthesisText(tiers, currentFuelType);
 
     // Parsing Time Label
     const startTimeStamp = new Date(chunk[0].startTime);
@@ -423,13 +498,16 @@ function renderTacticalBlocks(periods) {
     const dayFormatter = new Intl.DateTimeFormat('en-US', { weekday: 'short', hour: 'numeric', hour12: false });
     const blockTitle = `${dayFormatter.format(startTimeStamp)} - ${new Intl.DateTimeFormat('en-US', { hour: 'numeric', hour12: false }).format(endTimeStamp)}`;
 
-    // Build the accordion card
     const card = document.createElement('div');
-    card.className = `block-card hazard-${threatDef.id}`;
+    // We add 'expanded' strictly to index 0 dynamically rendering opened
+    card.className = `block-card hazard-${threatDef.id} ${i === 0 ? 'expanded' : ''}`;
     
     const template = `
       <div class="block-header">
-        <span>${blockTitle.toUpperCase()}</span>
+        <div class="block-header-title">
+          <span>${blockTitle.toUpperCase()}</span>
+          ${ICONS.chevron}
+        </div>
         <span>${threatDef.label}</span>
       </div>
       <div class="block-row"><span class="block-label">TEMP MAX</span> <span class="block-value text-tier-${tiers.temp}">${maxTemp}F</span></div>
@@ -438,8 +516,8 @@ function renderTacticalBlocks(periods) {
       <div class="block-row"><span class="block-label">1-HR FDFM</span> <span class="block-value text-tier-${tiers.fdfm}">${calculatedFDFM}%</span></div>
       
       <div class="expected-behavior">
-        <strong style="color:var(--text-muted); display:block; margin-bottom: 0.25rem;">EXPECTED BEHAVIOR (${currentFuelType.toUpperCase()})</strong>
-        ${escapeHTML(behaviorText)}
+        <strong style="color:var(--text-active); display:block; margin-bottom: 0.5rem; text-transform:uppercase; border-bottom:1px solid var(--border-muted); padding-bottom:0.25rem;">SYNTHESIS (${currentFuelType})</strong>
+        ${behaviorTextHtml}
       </div>
     `;
     
@@ -448,10 +526,7 @@ function renderTacticalBlocks(periods) {
     // Accordion interaction
     card.addEventListener('click', () => {
       const isExpanded = card.classList.contains('expanded');
-      
-      // Close all others
       document.querySelectorAll('.block-card').forEach(c => c.classList.remove('expanded'));
-      
       if (!isExpanded) {
         card.classList.add('expanded');
       }

@@ -491,7 +491,58 @@ button svg {
 }
 
 /* Individual Metric Highlight Tiers */
-.text-tier-1 { color: #007bff !important; font-weight: 900; } /* Low (Blue) */
-.text-tier-2 { color: #ffc107 !important; font-weight: 900; } /* Elevated (Yellow) */
-.text-tier-3 { color: #fd7e14 !important; font-weight: 900; } /* Escalated (Orange) */
-.text-tier-4 { color: #dc3545 !important; font-weight: 900; } /* Extreme (Red) */
+.text-tier-1 { color: #007bff !important; font-weight: 900; }
+.text-tier-2 { color: #ffc107 !important; font-weight: 900; }
+.text-tier-3 { color: #fd7e14 !important; font-weight: 900; }
+.text-tier-4 { color: #dc3545 !important; font-weight: 900; }
+
+/* Validation Error States */
+.input-error {
+  border-color: var(--danger-bg) !important;
+  background-color: rgba(220, 53, 69, 0.05) !important;
+}
+.btn-error {
+  background-color: var(--danger-bg) !important;
+  color: var(--danger-text) !important;
+}
+
+@keyframes shake {
+  0% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  50% { transform: translateX(5px); }
+  75% { transform: translateX(-5px); }
+  100% { transform: translateX(0); }
+}
+.shake {
+  animation: shake 0.4s ease-in-out;
+}
+
+/* Telemetry Metadata UI */
+.telemetry-metadata {
+  margin-top: 0.75rem;
+  padding: 0.5rem 0.25rem;
+  border-top: 1px dashed var(--border-muted);
+  font-family: monospace;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+  text-transform: uppercase;
+}
+
+/* Accordion Interaction Improvements */
+.block-header-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.chevron-icon {
+  width: 16px;
+  height: 16px;
+  transition: transform 0.3s ease;
+  color: inherit;
+}
+
+.block-card.expanded .chevron-icon {
+  transform: rotate(180deg);
+}
