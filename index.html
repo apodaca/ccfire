@@ -16,6 +16,23 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <!-- OPERATIONAL DISCLAIMER MODAL -->
+  <div id="disclaimer-modal" class="modal-overlay hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>OPERATIONAL DISCLAIMER</h2>
+      </div>
+      <div class="modal-body">
+        <p>This tactical weather dashboard provides automated aggregation of National Weather Service (NWS) point forecasts and remote sensor observations. IT DOES NOT PREDICT PRECISE FIRE SPREAD OR BEHAVIOR.</p>
+        <p>Data provided herein does not supersede official Incident Action Plans, established Fire Weather Watches, Red Flag Warnings, or direct directives from Incident Command.</p>
+        <p>By proceeding, you acknowledge that you are using this tool for situational awareness only, and assume all risks associated with operational decisions made on the fireline.</p>
+      </div>
+      <div class="modal-footer">
+        <button id="btn-accept-disclaimer" class="btn-primary">I ACKNOWLEDGE AND ACCEPT</button>
+      </div>
+    </div>
+  </div>
+
   <div class="app-container">
     <header class="app-header">
       <div class="header-content">
@@ -91,7 +108,23 @@
         </div>
 
         <h2 class="section-title mt-2">NEAR-TERM TACTICAL BLOCKS (3-HR)</h2>
-        <div id="blocks-container" class="blocks-container" aria-live="polite">
+        
+        <!-- TACTICAL FUEL SELECTION -->
+        <div class="fuel-selector-container">
+          <label class="fuel-label">PREDOMINANT FUEL TYPE:</label>
+          <div class="segmented-control">
+            <input type="radio" name="fuel-type" id="fuel-grass" value="Grass">
+            <label for="fuel-grass">GRASS</label>
+            
+            <input type="radio" name="fuel-type" id="fuel-brush" value="Brush" checked>
+            <label for="fuel-brush">BRUSH</label>
+            
+            <input type="radio" name="fuel-type" id="fuel-timber" value="Timber">
+            <label for="fuel-timber">TIMBER</label>
+          </div>
+        </div>
+
+        <div id="blocks-container" class="blocks-container accordion-group" aria-live="polite">
           <div class="empty-state">Awaiting Geographic Input</div>
         </div>
       </section>

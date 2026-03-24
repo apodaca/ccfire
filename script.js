@@ -16,29 +16,55 @@ const ICONS = {
 // Global State
 let map;
 let marker;
-let currentCoords = { lat: 37.1995, lon: -105.4236 }; // Default: San Luis
+let currentCoords = { lat: 37.1995, lon: -105.4236 };
+let currentFuelType = 'Brush';
+let currentForecastPeriods = [];
 
-// Dynamic Hazard Thresholds Function
-const getHazardCriteria = (lat, lon) => {
-  // Can be adjusted based on fuel type matrices, elevation, or dispatch zones
-  return {
-    windSustained: 20,
-    windGust: 25,
-    tempMax: 65,
-    rhMin: 20,
-    deviationToleranceTemp: 5,   // If ground truth exceeds forecast by 5 degrees -> breach
-    deviationToleranceRH: -5,    // If ground truth drops below forecast by 5% -> breach
-    deviationToleranceWind: 10   // If ground truth wind gusts exceed forecast by 10mph -> breach
-  };
+// Threat Numerics
+const THREAT_LEVELS = {
+  1: { id: "low", label: "LOW" },
+  2: { id: "elevated", label: "ELEVATED" },
+  3: { id: "escalated", label: "ESCALATED" },
+  4: { id: "extreme", label: "EXTREME" }
 };
 
 document.addEventListener('DOMContentLoaded', () => {
+  enforceOperationalDisclaimer();
   initMap();
   setupEventListeners();
   checkConnectivity();
   window.addEventListener('online', checkConnectivity);
   window.addEventListener('offline', checkConnectivity);
 });
+
+// -----------------------------------------
+// 1. Gatekeeper Logic
+// -----------------------------------------
+function enforceOperationalDisclaimer() {
+  const modal = document.getElementById('disclaimer-modal');
+  const btnAccept = document.getElementById('btn-accept-disclaimer');
+  
+  const lastAcceptedStr = localStorage.getItem('disclaimerAcceptedTimestamp');
+  let requireAcceptance = true;
+  
+  if (lastAcceptedStr) {
+    const lastAccepted = Number(lastAcceptedStr);
+    const now = Date.now();
+    const hoursSinceAccept = (now - lastAccepted) / (1000 * 60 * 60);
+    if (hoursSinceAccept < 24) {
+      requireAcceptance = false;
+    }
+  }
+
+  if (requireAcceptance) {
+    modal.classList.remove('hidden');
+  }
+
+  btnAccept.addEventListener('click', () => {
+    localStorage.setItem('disclaimerAcceptedTimestamp', Date.now().toString());
+    modal.classList.add('hidden');
+  });
+}
 
 function checkConnectivity() {
   const offlineBanner = document.getElementById('offline-warning');
@@ -51,25 +77,20 @@ function checkConnectivity() {
 }
 
 function initMap() {
-  // Offline ready Leaflet setup. Note: Without network, default OSM won't load unless cached.
-  // In a true offline deployment, the URL would point to local PMTiles or GeoJSON rendering layers.
   map = L.map('map-container').setView([currentCoords.lat, currentCoords.lon], 9);
-  
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 18,
     attribution: 'Tactical Fire Map'
   }).addTo(map);
 
   marker = L.marker([currentCoords.lat, currentCoords.lon]).addTo(map);
-
-  map.on('click', (e) => {
-    updateCoordinates(e.latlng.lat, e.latlng.lng);
-  });
+  map.on('click', (e) => updateCoordinates(e.latlng.lat, e.latlng.lng));
 }
 
 function setupEventListeners() {
   const btnFetch = document.getElementById('btn-fetch');
   const btnGeo = document.getElementById('btn-geolocation');
+  const fuelInputs = document.querySelectorAll('input[name="fuel-type"]');
 
   btnGeo.addEventListener('click', () => {
     if ("geolocation" in navigator) {
@@ -88,10 +109,19 @@ function setupEventListeners() {
       fetchEnterpriseData(latIn, lonIn);
     }
   });
+
+  // State Management: Fuel Type Selection
+  fuelInputs.forEach(input => {
+    input.addEventListener('change', (e) => {
+      currentFuelType = e.target.value;
+      if (currentForecastPeriods.length > 0) {
+        renderTacticalBlocks(currentForecastPeriods);
+      }
+    });
+  });
 }
 
 function updateCoordinates(lat, lon) {
-  // Ensure valid coordinate constraints
   lat = Math.max(-90, Math.min(90, lat));
   lon = Math.max(-180, Math.min(180, lon));
   currentCoords = { lat, lon };
@@ -114,31 +144,24 @@ async function fetchEnterpriseData(lat, lon) {
   document.getElementById('blocks-container').innerHTML = '';
 
   try {
-    // 1. Point Resolution
     const pointUrl = `https://api.weather.gov/points/${lat},${lon}`;
     const pointRes = await fetch(pointUrl);
     
     if (!pointRes.ok) throw new Error("Metadata resolution failed");
     
     const pointData = await pointRes.json();
-    if (pointData.offline) {
-      console.warn("Serving from cache. API response simulated offline.");
-    }
-    
     const props = pointData.properties;
     if (!props) throw new Error("Invalid NWS Point Metadata Structure");
 
     const hourlyForecastUrl = props.forecastHourly;
     const fwzUrl = props.fireWeatherZone;
     const stationsUrl = props.observationStations;
-
     const zoneId = fwzUrl ? fwzUrl.split('/').pop() : null;
 
-    // 2. Parallel Endpoint Requests
     const promises = [
-      fetch(hourlyForecastUrl).then(res => res.json()), // Forecast [index 0]
-      zoneId ? fetch(`https://api.weather.gov/alerts/active/zone/${zoneId}`).then(res => res.json()) : Promise.resolve(null), // Alerts [index 1]
-      fetchGroundTruth(stationsUrl) // Ground Truth Station [index 2]
+      fetch(hourlyForecastUrl).then(res => res.json()),
+      zoneId ? fetch(`https://api.weather.gov/alerts/active/zone/${zoneId}`).then(res => res.json()) : Promise.resolve(null),
+      fetchGroundTruth(stationsUrl)
     ];
 
     const results = await Promise.allSettled(promises);
@@ -147,15 +170,14 @@ async function fetchEnterpriseData(lat, lon) {
     const alertsData = results[1].status === 'fulfilled' ? results[1].value : null;
     const groundTruthData = results[2].status === 'fulfilled' ? results[2].value : null;
 
-    // 3. Data Processing Pipeline
     if (alertsData && alertsData.features) {
       renderAlerts(alertsData.features);
     }
     
     if (forecastData && forecastData.properties && forecastData.properties.periods) {
-      const periods = forecastData.properties.periods;
-      renderComparisonMatrix(periods[0], groundTruthData, lat, lon);
-      renderTacticalBlocks(periods, lat, lon);
+      currentForecastPeriods = forecastData.properties.periods;
+      renderComparisonMatrix(currentForecastPeriods[0], groundTruthData);
+      renderTacticalBlocks(currentForecastPeriods);
     } else {
       throw new Error("Hourly forecast payload malformed or missing.");
     }
@@ -168,7 +190,6 @@ async function fetchEnterpriseData(lat, lon) {
   }
 }
 
-// Sub-pipeline to map the closest station and fetch its latest observation
 async function fetchGroundTruth(stationsUrl) {
   if (!stationsUrl) return null;
   try {
@@ -190,11 +211,71 @@ async function fetchGroundTruth(stationsUrl) {
 }
 
 // -----------------------------------------
+// Utility: Fine Dead Fuel Moisture & Drivers
+// -----------------------------------------
+function calculateFDFM(tempF, rh) {
+  // Simard (1968) Reference Model Appx
+  let rhClamped = Math.max(0, Math.min(100, rh));
+  let m = 0;
+  if (rhClamped < 10) {
+    m = 0.03229 + 0.281073 * rhClamped - 0.000578 * rhClamped * tempF;
+  } else if (rhClamped < 50) {
+    m = 2.22749 + 0.160107 * rhClamped - 0.01478 * tempF;
+  } else {
+    m = 21.0606 + 0.005565 * (rhClamped * rhClamped) - 0.00035 * rhClamped * tempF - 0.483199 * rhClamped;
+  }
+  return Math.max(1, Math.round(m));
+}
+
+function evaluateThreatTier(rh, gust, fdfm) {
+  // Extract Individual Tiers (1 = Low, 4 = Extreme)
+  let rhTier = 1;
+  if (rh <= 15) rhTier = 4;
+  else if (rh <= 24) rhTier = 3;
+  else if (rh <= 40) rhTier = 2;
+
+  let gustTier = 1;
+  if (gust >= 40) gustTier = 4;
+  else if (gust >= 26) gustTier = 3;
+  else if (gust >= 15) gustTier = 2;
+
+  let fdfmTier = 1;
+  if (fdfm <= 5) fdfmTier = 4;
+  else if (fdfm <= 8) fdfmTier = 3;
+  else if (fdfm <= 12) fdfmTier = 2;
+
+  return Math.max(rhTier, gustTier, fdfmTier);
+}
+
+function getBehaviorText(fuelType, threatTier) {
+  const matrix = {
+    "Grass": {
+      1: "Creeping and smoldering. Minimal spread rates.",
+      2: "Moderate flanking and backing. Head fire spread possible with localized alignment.",
+      3: "Rapid rates of spread. Fine fuels exhibiting strong ignition receptivity.",
+      4: "Explosive spread rates. Expect wind-driven runs. Fine fuels fully cured."
+    },
+    "Brush": {
+      1: "Smoldering in heavy fuels. Little to no spread.",
+      2: "Creeping surface fire. Isolated torching in unburned canopies.",
+      3: "Active surface fire. Frequent torching and group fires.",
+      4: "Intense fire behavior. Sustained crown fire runs. High potential for short-range spotting."
+    },
+    "Timber": {
+      1: "Creeping surface fire confined to duff and litter layers.",
+      2: "Surface fire with occasional single-tree torching.",
+      3: "Surface fire climbing ladder fuels. Group torching.",
+      4: "Independent crowning possible. High probability of long-range spotting. Extreme resistance to control."
+    }
+  };
+  return matrix[fuelType][threatTier] || "Data unavailable for operational parsing.";
+}
+
+// -----------------------------------------
 // Tactical Render Pipelines
 // -----------------------------------------
 function renderAlerts(features) {
   const container = document.getElementById('alerts-container');
-  // Filter for tactical fire management alerts
   const fireAlerts = features.filter(f => {
     const event = (f.properties.event || '').toLowerCase();
     return event.includes('red flag') || event.includes('fire weather') || 
@@ -209,18 +290,14 @@ function renderAlerts(features) {
   });
 }
 
-function renderComparisonMatrix(currentForecast, groundTruth, lat, lon) {
-  const criteria = getHazardCriteria(lat, lon);
+function renderComparisonMatrix(currentForecast, groundTruth) {
   const tbody = document.getElementById('matrix-body');
   
-  // Safe integer parsing constraints
   const fTemp = safeInt(currentForecast.temperature);
   const fRH = currentForecast.relativeHumidity ? safeInt(currentForecast.relativeHumidity.value) : null;
-  const fWind = extractNumberStrict(currentForecast.windSpeed || '');
-  const fGust = extractNumberStrict(currentForecast.windGust || currentForecast.windSpeed || ''); // Fallback
+  const fGust = extractNumberStrict(currentForecast.windGust || currentForecast.windSpeed || '');
 
-  // Convert Ground Truth (Celsius -> Fahrenheit for temp)
-  let tTemp = null, tRH = null, tWind = null, tGust = null;
+  let tTemp = null, tRH = null, tGust = null;
   if (groundTruth) {
     if (groundTruth.temperature && groundTruth.temperature.value !== null) {
       tTemp = Math.round((Number(groundTruth.temperature.value) * 9/5) + 32);
@@ -228,26 +305,17 @@ function renderComparisonMatrix(currentForecast, groundTruth, lat, lon) {
     if (groundTruth.relativeHumidity && groundTruth.relativeHumidity.value !== null) {
       tRH = Math.round(Number(groundTruth.relativeHumidity.value));
     }
-    if (groundTruth.windSpeed && groundTruth.windSpeed.value !== null) {
-      tWind = Math.round(Number(groundTruth.windSpeed.value) * 0.621371); // km/h to mph or m/s to mph depending on metric. NWS obs gives km/h usually.
-      // Correction: NWS observations gives m/s natively, but wait docs say km/h sometimes.
-      // Let's assume km/h for the conversion standard or just render actual NDFD.
-      // Wait, standard NWS numeric value for wind in obs is usually m/s or km/h. To be tactical, we label it carefully, let's assume km/h: km/h * 0.621371 = mph. 
-      // NWS API specifies value is in km/h typically, or provides unit code. We'll use simple fallback multiplier * 0.621371.
-    }
     if (groundTruth.windGust && groundTruth.windGust.value !== null) {
       tGust = Math.round(Number(groundTruth.windGust.value) * 0.621371);
     }
   }
 
-  // Row Generation Functions calculating deviations
-  function generateRow(metricLabel, forecastVal, truthVal, unit, isInverseMetric = false, tolerance = 0, dangerThreshold = 0) {
+  function generateRow(metricLabel, forecastVal, truthVal, unit, isInverseMetric, tolerance, dangerThreshold) {
     let status = 'NOMINAL';
     let breachClass = '';
     
     if (truthVal !== null && forecastVal !== null) {
       const diff = truthVal - forecastVal;
-      // If inverse metric (like RH), negative diff is worse. Otherwise positive is worse.
       const isWorse = isInverseMetric ? (diff <= tolerance) : (diff >= tolerance);
       const breachesThreshold = isInverseMetric ? (truthVal <= dangerThreshold) : (truthVal >= dangerThreshold);
       
@@ -271,37 +339,31 @@ function renderComparisonMatrix(currentForecast, groundTruth, lat, lon) {
     </tr>`;
   }
 
+  // Simplified hardcoded tolerances for the matrix based on general NWCG guidelines
   const rowsHtml = [
-    generateRow("TEMPERATURE", fTemp, tTemp, 'F', false, criteria.deviationToleranceTemp, criteria.tempMax),
-    generateRow("REL HUMIDITY", fRH, tRH, '%', true, criteria.deviationToleranceRH, criteria.rhMin),
-    generateRow("WIND SPEED", fWind, tWind, 'MPH', false, criteria.deviationToleranceWind, criteria.windSustained),
-    generateRow("WIND GUST", fGust, tGust, 'MPH', false, criteria.deviationToleranceWind, criteria.windGust)
+    generateRow("TEMPERATURE", fTemp, tTemp, 'F', false, 5, 85),
+    generateRow("REL HUMIDITY", fRH, tRH, '%', true, -5, 20),
+    generateRow("WIND GUST", fGust, tGust, 'MPH', false, 10, 25)
   ].join('');
 
   tbody.innerHTML = rowsHtml;
 }
 
-function renderTacticalBlocks(periods, lat, lon) {
+function renderTacticalBlocks(periods) {
   const container = document.getElementById('blocks-container');
   container.innerHTML = '';
   
-  const criteria = getHazardCriteria(lat, lon);
-  const maxHours = Math.min(periods.length, 24); // Focus on next 24 operational hours
+  const maxHours = Math.min(periods.length, 24); 
 
   for (let i = 0; i < maxHours; i += 3) {
     const chunk = periods.slice(i, i + 3);
     if (chunk.length === 0) break;
     
-    // Parse Date block properly
-    const startTimeStamp = new Date(chunk[0].startTime);
-    const dayFormatter = new Intl.DateTimeFormat('en-US', { weekday: 'short', hour: 'numeric', hour12: false });
-    const blockTitle = dayFormatter.format(startTimeStamp).toUpperCase();
-
+    // Aggregate block limits
     let maxTemp = -999;
     let minRH = 999;
     let maxWind = 0;
     let maxGust = 0;
-    let hasLightningEvent = false;
 
     chunk.forEach(hour => {
       const hTemp = safeInt(hour.temperature);
@@ -312,10 +374,6 @@ function renderTacticalBlocks(periods, lat, lon) {
         if (hRH < minRH) minRH = hRH;
       }
       
-      if (hour.shortForecast && hour.shortForecast.toLowerCase().includes('thunderstorm')) {
-        hasLightningEvent = true;
-      }
-      
       const wSpeed = extractNumberStrict(hour.windSpeed || '');
       if (wSpeed > maxWind) maxWind = wSpeed;
 
@@ -324,26 +382,59 @@ function renderTacticalBlocks(periods, lat, lon) {
     });
 
     if (maxGust === 0 && maxWind > 0) maxGust = maxWind;
+    if (minRH === 999) minRH = 25; // fallback
+    if (maxTemp === -999) maxTemp = 65; // fallback
 
-    // Tactical Check
-    const isDangerBlock = (maxWind >= criteria.windSustained) || (maxGust >= criteria.windGust) || 
-                          (minRH <= criteria.rhMin && maxTemp >= criteria.tempMax) || hasLightningEvent;
-
-    // Build Tactical Display Card safely
-    const card = document.createElement('div');
-    card.className = `block-card ${isDangerBlock ? 'block-danger' : ''}`;
+    // Calculate FDFM Base
+    const calculatedFDFM = calculateFDFM(maxTemp, minRH);
     
-    let template = `
+    // Matrix Evaluation
+    const blockThreatSeverity = evaluateThreatTier(minRH, maxGust, calculatedFDFM);
+    const threatDef = THREAT_LEVELS[blockThreatSeverity];
+
+    // Behavior Text Routing
+    const behaviorText = getBehaviorText(currentFuelType, blockThreatSeverity);
+
+    // Parsing Time Label
+    const startTimeStamp = new Date(chunk[0].startTime);
+    const endTimeStamp = new Date(chunk[chunk.length-1].endTime);
+    const dayFormatter = new Intl.DateTimeFormat('en-US', { weekday: 'short', hour: 'numeric', hour12: false });
+    const blockTitle = `${dayFormatter.format(startTimeStamp)} - ${new Intl.DateTimeFormat('en-US', { hour: 'numeric', hour12: false }).format(endTimeStamp)}`;
+
+    // Build the accordion card
+    const card = document.createElement('div');
+    card.className = `block-card hazard-${threatDef.id}`;
+    
+    const template = `
       <div class="block-header">
-        <span>${blockTitle} - ${new Intl.DateTimeFormat('en-US', { hour: 'numeric', hour12: false }).format(new Date(chunk[chunk.length-1].endTime))}H</span>
-        ${hasLightningEvent ? ICONS.lightning : ''}
+        <span>${blockTitle.toUpperCase()}</span>
+        <span>${threatDef.label}</span>
       </div>
-      <div class="block-row"><span class="block-label">TEMP MAX</span> <span class="block-value">${maxTemp !== -999 ? maxTemp : 'N/A'}F</span></div>
-      <div class="block-row"><span class="block-label">RH MIN</span> <span class="block-value">${minRH !== 999 ? minRH : 'N/A'}%</span></div>
-      <div class="block-row"><span class="block-label">WIND MAX</span> <span class="block-value">${maxWind}MPH</span></div>
-      <div class="block-row"><span class="block-label">GUST MAX</span> <span class="block-value ${maxGust >= criteria.windGust ? 'hazard-breach' : ''}">${maxGust}MPH</span></div>
+      <div class="block-row"><span class="block-label">TEMP MAX</span> <span class="block-value">${maxTemp}F</span></div>
+      <div class="block-row"><span class="block-label">RH MIN</span> <span class="block-value">${minRH}%</span></div>
+      <div class="block-row"><span class="block-label">GUST MAX</span> <span class="block-value">${maxGust}MPH</span></div>
+      <div class="block-row"><span class="block-label">1-HR FDFM</span> <span class="block-value">${calculatedFDFM}%</span></div>
+      
+      <div class="expected-behavior">
+        <strong style="color:var(--text-muted); display:block; margin-bottom: 0.25rem;">EXPECTED BEHAVIOR (${currentFuelType.toUpperCase()})</strong>
+        ${escapeHTML(behaviorText)}
+      </div>
     `;
+    
     card.innerHTML = template;
+
+    // Accordion interaction
+    card.addEventListener('click', () => {
+      const isExpanded = card.classList.contains('expanded');
+      
+      // Close all others
+      document.querySelectorAll('.block-card').forEach(c => c.classList.remove('expanded'));
+      
+      if (!isExpanded) {
+        card.classList.add('expanded');
+      }
+    });
+
     container.appendChild(card);
   }
 }
@@ -353,7 +444,6 @@ function renderTacticalBlocks(periods, lat, lon) {
 // -----------------------------------------
 function extractNumberStrict(str) {
   if (typeof str !== 'string') return 0;
-  // Use aggressive parsing without regex matching execution
   const parts = str.split(' ');
   let max = 0;
   for (const part of parts) {
