@@ -359,12 +359,19 @@ function evaluateThreatTier(temp, rh, gust, fdfm) {
   else if (fdfm <= 8) fdfmTier = 3;
   else if (fdfm <= 12) fdfmTier = 2;
 
+  let overallThreat = Math.max(rhTier, gustTier);
+  if (fdfmTier === 4 && overallThreat < 4) {
+    overallThreat = Math.max(overallThreat, 3);
+  } else {
+    overallThreat = Math.max(overallThreat, fdfmTier);
+  }
+
   return {
     temp: tempTier,
     rh: rhTier,
     gust: gustTier,
     fdfm: fdfmTier,
-    max: Math.max(rhTier, gustTier, fdfmTier)
+    max: overallThreat
   };
 }
 

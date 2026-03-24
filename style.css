@@ -459,14 +459,14 @@ button svg {
 }
 
 /* Hazard Levels (Applied to Forecast Blocks) */
-.hazard-low { border-color: var(--safe); }
-.hazard-low > .block-header { color: #ffffff; background-color: var(--safe); padding: 0.75rem; margin: -1rem -1rem 1rem -1rem; border-radius: var(--radius) var(--radius) 0 0; }
-.hazard-elevated { border-color: var(--caution); }
-.hazard-elevated > .block-header { color: #ffffff; background-color: var(--caution); padding: 0.75rem; margin: -1rem -1rem 1rem -1rem; border-radius: var(--radius) var(--radius) 0 0; }
-.hazard-escalated { border-color: #d9534f; }
-.hazard-escalated > .block-header { color: #ffffff; background-color: #d9534f; padding: 0.75rem; margin: -1rem -1rem 1rem -1rem; border-radius: var(--radius) var(--radius) 0 0; }
-.hazard-extreme { border-color: var(--danger-bg); background-color: rgba(220, 53, 69, 0.05); }
-.hazard-extreme > .block-header { color: #ffffff; background-color: var(--danger-bg); padding: 0.75rem; margin: -1rem -1rem 1rem -1rem; border-radius: var(--radius) var(--radius) 0 0; }
+.hazard-low { border-color: #0056b3; }
+.hazard-low > .block-header { color: #ffffff; background-color: #0056b3; padding: 0.75rem; margin: -1rem -1rem 1rem -1rem; border-radius: var(--radius) var(--radius) 0 0; }
+.hazard-elevated { border-color: #cc9900; }
+.hazard-elevated > .block-header { color: #ffffff; background-color: #cc9900; padding: 0.75rem; margin: -1rem -1rem 1rem -1rem; border-radius: var(--radius) var(--radius) 0 0; }
+.hazard-escalated { border-color: #e65c00; }
+.hazard-escalated > .block-header { color: #ffffff; background-color: #e65c00; padding: 0.75rem; margin: -1rem -1rem 1rem -1rem; border-radius: var(--radius) var(--radius) 0 0; }
+.hazard-extreme { border-color: #cc0000; background-color: rgba(204, 0, 0, 0.05); }
+.hazard-extreme > .block-header { color: #ffffff; background-color: #cc0000; padding: 0.75rem; margin: -1rem -1rem 1rem -1rem; border-radius: var(--radius) var(--radius) 0 0; }
 
 /* Interactive Accordion Behaviors */
 .block-card.expanded {
@@ -495,11 +495,11 @@ button svg {
   to { opacity: 1; }
 }
 
-/* Individual Metric Highlight Tiers */
-.text-tier-1 { color: #007bff !important; font-weight: 900; }
-.text-tier-2 { color: #ffc107 !important; font-weight: 900; }
-.text-tier-3 { color: #fd7e14 !important; font-weight: 900; }
-.text-tier-4 { color: #dc3545 !important; font-weight: 900; }
+/* Individual Metric Highlight Tiers - High Contrast */
+.text-tier-1 { color: #0056b3 !important; font-weight: 900; }
+.text-tier-2 { color: #cc9900 !important; font-weight: 900; }
+.text-tier-3 { color: #e65c00 !important; font-weight: 900; }
+.text-tier-4 { color: #cc0000 !important; font-weight: 900; }
 
 /* Validation Error States */
 .input-error {
