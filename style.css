@@ -489,3 +489,9 @@ button svg {
   from { opacity: 0; }
   to { opacity: 1; }
 }
+
+/* Individual Metric Highlight Tiers */
+.text-tier-1 { color: #007bff !important; font-weight: 900; } /* Low (Blue) */
+.text-tier-2 { color: #ffc107 !important; font-weight: 900; } /* Elevated (Yellow) */
+.text-tier-3 { color: #fd7e14 !important; font-weight: 900; } /* Escalated (Orange) */
+.text-tier-4 { color: #dc3545 !important; font-weight: 900; } /* Extreme (Red) */

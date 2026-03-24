@@ -238,8 +238,12 @@ function calculateFDFM(tempF, rh) {
   return Math.max(1, Math.round(m));
 }
 
-function evaluateThreatTier(rh, gust, fdfm) {
-  // Extract Individual Tiers (1 = Low, 4 = Extreme)
+function evaluateThreatTier(temp, rh, gust, fdfm) {
+  let tempTier = 1;
+  if (temp >= 90) tempTier = 4;
+  else if (temp >= 80) tempTier = 3;
+  else if (temp >= 70) tempTier = 2;
+
   let rhTier = 1;
   if (rh <= 15) rhTier = 4;
   else if (rh <= 24) rhTier = 3;
@@ -255,7 +259,13 @@ function evaluateThreatTier(rh, gust, fdfm) {
   else if (fdfm <= 8) fdfmTier = 3;
   else if (fdfm <= 12) fdfmTier = 2;
 
-  return Math.max(rhTier, gustTier, fdfmTier);
+  return {
+    temp: tempTier,
+    rh: rhTier,
+    gust: gustTier,
+    fdfm: fdfmTier,
+    max: Math.max(rhTier, gustTier, fdfmTier)
+  };
 }
 
 function getBehaviorText(fuelType, threatTier) {
@@ -400,7 +410,8 @@ function renderTacticalBlocks(periods) {
     const calculatedFDFM = calculateFDFM(maxTemp, minRH);
     
     // Matrix Evaluation
-    const blockThreatSeverity = evaluateThreatTier(minRH, maxGust, calculatedFDFM);
+    const tiers = evaluateThreatTier(maxTemp, minRH, maxGust, calculatedFDFM);
+    const blockThreatSeverity = tiers.max;
     const threatDef = THREAT_LEVELS[blockThreatSeverity];
 
     // Behavior Text Routing
@@ -421,10 +432,10 @@ function renderTacticalBlocks(periods) {
         <span>${blockTitle.toUpperCase()}</span>
         <span>${threatDef.label}</span>
       </div>
-      <div class="block-row"><span class="block-label">TEMP MAX</span> <span class="block-value">${maxTemp}F</span></div>
-      <div class="block-row"><span class="block-label">RH MIN</span> <span class="block-value">${minRH}%</span></div>
-      <div class="block-row"><span class="block-label">GUST MAX</span> <span class="block-value">${maxGust}MPH</span></div>
-      <div class="block-row"><span class="block-label">1-HR FDFM</span> <span class="block-value">${calculatedFDFM}%</span></div>
+      <div class="block-row"><span class="block-label">TEMP MAX</span> <span class="block-value text-tier-${tiers.temp}">${maxTemp}F</span></div>
+      <div class="block-row"><span class="block-label">RH MIN</span> <span class="block-value text-tier-${tiers.rh}">${minRH}%</span></div>
+      <div class="block-row"><span class="block-label">GUST MAX</span> <span class="block-value text-tier-${tiers.gust}">${maxGust}MPH</span></div>
+      <div class="block-row"><span class="block-label">1-HR FDFM</span> <span class="block-value text-tier-${tiers.fdfm}">${calculatedFDFM}%</span></div>
       
       <div class="expected-behavior">
         <strong style="color:var(--text-muted); display:block; margin-bottom: 0.25rem;">EXPECTED BEHAVIOR (${currentFuelType.toUpperCase()})</strong>
