@@ -37,10 +37,10 @@
     <header class="app-header">
       <div class="header-content">
         <svg class="header-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+          <circle cx="12" cy="12" r="10"/><line x1="22" y1="12" x2="18" y2="12"/><line x1="6" y1="12" x2="2" y2="12"/><line x1="12" y1="6" x2="12" y2="2"/><line x1="12" y1="22" x2="12" y2="18"/>
         </svg>
-        <h1>TACTICAL FIRE WEATHER</h1>
-        <p class="subtitle">ENTERPRISE EMERGENCY MANAGEMENT SYSTEM</p>
+        <h1>TACTICAL FIRE WEATHER OVERVIEW</h1>
+        <p class="subtitle">REGIONAL EMERGENCY MANAGEMENT SYSTEM</p>
       </div>
       <div id="offline-warning" class="offline-warning hidden">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -104,8 +104,8 @@
             <thead>
               <tr>
                 <th>METRIC</th>
-                <th>HR FORECAST <span class="data-source-label">(NDFD)</span></th>
-                <th>GROUND TRUTH <span class="data-source-label">(RAWS / NWS OBS)</span></th>
+                <th>NWS FORECAST <span class="data-source-label">(EXPECTED)</span></th>
+                <th>STATION TELEMETRY <span class="data-source-label">(ACTUAL)</span></th>
                 <th>STATUS</th>
               </tr>
             </thead>
