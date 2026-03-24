@@ -3,112 +3,99 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>San Luis Valley Fire Weather</title>
+  <title>Tactical Fire Weather PWA</title>
+  <link rel="manifest" href="manifest.json">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+  
+  <!-- Leaflet CSS for map (cacheable via SW) -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div class="app-container">
     <header class="app-header">
       <div class="header-content">
-        <h1>🔥 San Luis Valley Fire Weather</h1>
-        <p class="subtitle">Real-time localized forecasts, burn advisories, and critical fire weather data.</p>
+        <!-- SVG Professional Icon -->
+        <svg class="header-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+        </svg>
+        <h1>TACTICAL FIRE WEATHER</h1>
+        <p class="subtitle">ENTERPRISE EMERGENCY MANAGEMENT SYSTEM</p>
+      </div>
+      <div id="offline-warning" class="offline-warning hidden">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68M17.31 17.31A10.43 10.43 0 0 1 12 19c-7 0-10-7-10-7a13.16 13.16 0 0 1 1.67-2.68M9 9l6 6M2 2l20 20"/>
+        </svg>
+        <span id="offline-timestamp">OFFLINE: Data as of [Timestamp]</span>
       </div>
     </header>
 
     <main class="dashboard">
-      <!-- Left Sidebar: Region & Location Selection -->
-      <div class="sidebar section-card">
-        <h2>Select Region</h2>
-        <div class="custom-select">
-          <select id="county-select" aria-label="Select County">
-            <!-- Populated by JS -->
-          </select>
+      <!-- Left Panel: Geographic Input -->
+      <section class="panel geo-panel">
+        <h2 class="section-title">GEOGRAPHIC INPUT</h2>
+        
+        <div class="input-group">
+          <label for="lat-input">Latitude</label>
+          <input type="number" id="lat-input" step="0.0001" placeholder="37.1995" />
         </div>
-
-        <h3 class="mt-2">Locations</h3>
-        <p class="instruction">Select a specific location to retrieve localized NWS point forecasts and Fire Weather Zone alerts.</p>
-        <div id="location-list" class="location-list">
-          <!-- Populated by JS -->
-        </div>
-      </div>
-
-      <!-- Right Main Content: Weather Details -->
-      <div class="details-section section-card">
-        <div id="town-header" class="town-header">
-          <h2 id="selected-town-name">Select a Location</h2>
-          <div id="nws-alerts-container" class="alerts-container"></div>
+        <div class="input-group">
+          <label for="lon-input">Longitude</label>
+          <input type="number" id="lon-input" step="0.0001" placeholder="-105.4236" />
         </div>
         
-        <div id="burn-advisory-banner" class="burn-advisory-banner">
-            <div class="advisory-icon" id="advisory-icon">ℹ️</div>
-            <div class="advisory-content">
-              <h3 id="advisory-title">Awaiting Selection</h3>
-              <p id="advisory-message">Please select a location to see burn advisories.</p>
-            </div>
-            <button id="toggle-checklist-btn" class="toggle-checklist-btn hidden">Safety Checklist</button>
+        <div class="action-row">
+          <button id="btn-geolocation" class="btn-secondary">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
+            USE CURRENT LOCATION
+          </button>
+          <button id="btn-fetch" class="btn-primary">
+            FETCH FORECAST
+          </button>
         </div>
 
-        <div id="burn-checklist" class="burn-checklist hidden">
-          <h4>✅ Burn Safety Checklist</h4>
-          <ul>
-            <li>📞 Call your local dispatch to notify them of your controlled burn.</li>
-            <li>🧯 Ensure water and tools are on hand in case of an emergency escape.</li>
-            <li>🚜 Create firebreaks by clearing dry vegetation around the burn area.</li>
-            <li>👥 Never burn alone — always have help available.</li>
-            <li>🌤️ Monitor the weather continuously, especially for sudden wind shifts or gusts.</li>
-            <li>🔥 Stay with the fire until it is completely out and cold to the touch.</li>
-            <li>📞 Call dispatch again when the burn is fully extinguished.</li>
-          </ul>
+        <div id="map-container" class="map-container"></div>
+      </section>
+
+      <!-- Right Panel: Data Output -->
+      <section class="panel data-panel">
+        <!-- Active Alerts (Assertive Announcing) -->
+        <div id="alerts-container" class="alerts-container" aria-live="assertive" aria-atomic="true">
+           <!-- Alert entries inserted here -->
         </div>
 
-        <div id="forecast-container" class="forecast-container">
-          <div class="forecast-header-row">
-            <h3>3-Hour Fire Weather Blocks</h3>
-            <p class="forecast-subtitle">Worst-case conditions for each block. Watch for high gusts and dry thunderstorms.</p>
-          </div>
-          <div id="blocks-grid" class="blocks-grid">
-            <div class="placeholder-msg">Forecast data will appear here.</div>
-          </div>
+        <h2 class="section-title">TELEMETRY: FORECAST VS GROUND TRUTH</h2>
+        <div class="loading-overlay hidden" id="loading-overlay">
+          <div class="spinner"></div><span>Querying NWS & Sensor APIs...</span>
         </div>
-      </div>
+
+        <!-- Comparison Matrix (Polite Announcing) -->
+        <div id="comparison-matrix" class="comparison-matrix" aria-live="polite">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>METRIC</th>
+                <th>HR FORECAST <span class="data-source-label">(NDFD)</span></th>
+                <th>GROUND TRUTH <span class="data-source-label">(RAWS / NWS OBS)</span></th>
+                <th>STATUS</th>
+              </tr>
+            </thead>
+            <tbody id="matrix-body">
+              <tr><td colspan="4" class="empty-state">Awaiting Geographic Input</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2 class="section-title mt-2">NEAR-TERM TACTICAL BLOCKS (3-HR)</h2>
+        <div id="blocks-container" class="blocks-container" aria-live="polite">
+          <div class="empty-state">Awaiting Geographic Input</div>
+        </div>
+      </section>
     </main>
-
-    <section class="education-section section-card">
-      <h2>Understanding Fire Behavior & Weather</h2>
-      <div class="edu-grid">
-        <div class="edu-card">
-          <div class="edu-icon">🌡️</div>
-          <h3>Temperatures</h3>
-          <p>Hot air pre-heats and dries out fuels, meaning they require less heat to ignite and burn faster.</p>
-        </div>
-        <div class="edu-card">
-          <div class="edu-icon">🔻</div>
-          <h3>Relative Humidity (RH)</h3>
-          <p>When RH drops below 20%, fine fuels (grass, needles) dry rapidly, making them highly flammable.</p>
-        </div>
-        <div class="edu-card">
-          <div class="edu-icon">💨</div>
-          <h3>Winds & Gusts</h3>
-          <p>Sustained wind drives fire spread, but sudden gusts easily cross firebreaks and cause spot fires miles away.</p>
-        </div>
-        <div class="edu-card">
-          <div class="edu-icon">⚡</div>
-          <h3>Dry Thunderstorms</h3>
-          <p>Thunderstorms without rain produce abundant lightning (primary ignition) and erratic downdraft winds.</p>
-        </div>
-      </div>
-    </section>
-
-    <footer class="app-footer">
-      <p>Data provided by the NWS National Digital Forecast Database (NDFD) & Weather.gov API</p>
-      <div class="footer-links">
-        <a href="https://csfs.colostate.edu/wildfire-mitigation/" target="_blank">Colorado State Forest Service</a>
-        <a href="https://www.weather.gov/fire/" target="_blank">NWS Fire Weather</a>
-      </div>
-    </footer>
   </div>
   <script src="script.js"></script>
 </body>

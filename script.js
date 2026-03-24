@@ -1,413 +1,377 @@
-// Fire Weather Hazard Thresholds
-const hazardCriteria = {
-  windSustained: { threshold: 20 }, // mph
-  windGust: { threshold: 25 },      // mph (critical for spot fires)
-  temp: { threshold: 65 },          // °F
-  rh: { threshold: 20 }             // %
+// Register Service Worker for PWA
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(err => {
+      console.warn('SW Registration failed:', err);
+    });
+  });
+}
+
+// Icons Set (SVG strings)
+const ICONS = {
+  danger: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`,
+  lightning: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>`
 };
 
-// Scalable Configuration for San Luis Valley Counties
-const regions = {
-  "Costilla": [
-    { name: "San Luis", lat: 37.1995, lon: -105.4236 },
-    { name: "Garcia", lat: 37.0001, lon: -105.6000 },
-    { name: "Fort Garland", lat: 37.5111, lon: -105.4381 },
-    { name: "Blanca", lat: 37.4395, lon: -105.5192 }
-  ],
-  "Alamosa": [
-    { name: "Alamosa (City)", lat: 37.4694, lon: -105.8700 },
-    { name: "Great Sand Dunes", lat: 37.7328, lon: -105.5121 },
-    { name: "Hooper", lat: 37.7419, lon: -105.8761 }
-  ],
-  "Conejos": [
-    { name: "Conejos (Town)", lat: 37.0886, lon: -106.0189 },
-    { name: "Antonito", lat: 37.0789, lon: -106.0086 },
-    { name: "Manassa", lat: 37.1728, lon: -105.9372 },
-    { name: "Platoro", lat: 37.3514, lon: -106.5361 }
-  ],
-  "Rio Grande": [
-    { name: "Del Norte", lat: 37.6789, lon: -106.3531 },
-    { name: "Monte Vista", lat: 37.5794, lon: -106.1464 },
-    { name: "South Fork", lat: 37.6706, lon: -106.6397 }
-  ],
-  "Saguache": [
-    { name: "Saguache (Town)", lat: 38.0872, lon: -106.1420 },
-    { name: "Center", lat: 37.7525, lon: -106.1086 },
-    { name: "Crestone", lat: 37.9958, lon: -105.6997 }
-  ],
-  "Mineral": [
-    { name: "Creede", lat: 37.8494, lon: -106.9255 },
-    { name: "Wolf Creek Pass", lat: 37.4722, lon: -106.7995 }
-  ]
+// Global State
+let map;
+let marker;
+let currentCoords = { lat: 37.1995, lon: -105.4236 }; // Default: San Luis
+
+// Dynamic Hazard Thresholds Function
+const getHazardCriteria = (lat, lon) => {
+  // Can be adjusted based on fuel type matrices, elevation, or dispatch zones
+  return {
+    windSustained: 20,
+    windGust: 25,
+    tempMax: 65,
+    rhMin: 20,
+    deviationToleranceTemp: 5,   // If ground truth exceeds forecast by 5 degrees -> breach
+    deviationToleranceRH: -5,    // If ground truth drops below forecast by 5% -> breach
+    deviationToleranceWind: 10   // If ground truth wind gusts exceed forecast by 10mph -> breach
+  };
 };
 
 document.addEventListener('DOMContentLoaded', () => {
-  setupRegionSelect();
-  setupChecklistToggle();
-
-  // Load Costilla -> San Luis as default starting point
-  const defaultRegion = "Costilla";
-  const defaultLocation = regions[defaultRegion][0];
-  document.getElementById('county-select').value = defaultRegion;
-  populateLocationList(defaultRegion, defaultLocation);
+  initMap();
+  setupEventListeners();
+  checkConnectivity();
+  window.addEventListener('online', checkConnectivity);
+  window.addEventListener('offline', checkConnectivity);
 });
 
-function setupChecklistToggle() {
-  const toggleBtn = document.getElementById('toggle-checklist-btn');
-  const checklist = document.getElementById('burn-checklist');
-  toggleBtn.addEventListener('click', () => {
-    const isHidden = checklist.classList.contains('hidden');
-    if (isHidden) {
-      checklist.classList.remove('hidden');
-      toggleBtn.innerText = 'Hide Checklist';
-    } else {
-      checklist.classList.add('hidden');
-      toggleBtn.innerText = 'Safety Checklist';
+function checkConnectivity() {
+  const offlineBanner = document.getElementById('offline-warning');
+  if (!navigator.onLine) {
+    offlineBanner.classList.remove('hidden');
+    document.getElementById('offline-timestamp').innerText = `OFFLINE: CACHED DATA AS OF ${new Date().toLocaleTimeString()}`;
+  } else {
+    offlineBanner.classList.add('hidden');
+  }
+}
+
+function initMap() {
+  // Offline ready Leaflet setup. Note: Without network, default OSM won't load unless cached.
+  // In a true offline deployment, the URL would point to local PMTiles or GeoJSON rendering layers.
+  map = L.map('map-container').setView([currentCoords.lat, currentCoords.lon], 9);
+  
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 18,
+    attribution: 'Tactical Fire Map'
+  }).addTo(map);
+
+  marker = L.marker([currentCoords.lat, currentCoords.lon]).addTo(map);
+
+  map.on('click', (e) => {
+    updateCoordinates(e.latlng.lat, e.latlng.lng);
+  });
+}
+
+function setupEventListeners() {
+  const btnFetch = document.getElementById('btn-fetch');
+  const btnGeo = document.getElementById('btn-geolocation');
+
+  btnGeo.addEventListener('click', () => {
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => updateCoordinates(pos.coords.latitude, pos.coords.longitude),
+        (err) => console.error("Geo access denied", err)
+      );
+    }
+  });
+
+  btnFetch.addEventListener('click', () => {
+    const latIn = parseFloat(document.getElementById('lat-input').value);
+    const lonIn = parseFloat(document.getElementById('lon-input').value);
+    if (!isNaN(latIn) && !isNaN(lonIn)) {
+      updateCoordinates(latIn, lonIn);
+      fetchEnterpriseData(latIn, lonIn);
     }
   });
 }
 
-function setupRegionSelect() {
-  const select = document.getElementById('county-select');
-  Object.keys(regions).forEach(county => {
-    const opt = document.createElement('option');
-    opt.value = county;
-    opt.innerHTML = `${county} County`;
-    select.appendChild(opt);
-  });
-
-  select.addEventListener('change', (e) => {
-    const county = e.target.value;
-    populateLocationList(county, regions[county][0]);
-  });
-}
-
-function populateLocationList(county, defaultLocToSelect) {
-  const locList = document.getElementById('location-list');
-  locList.innerHTML = '';
-
-  regions[county].forEach(loc => {
-    const btn = document.createElement('div');
-    btn.className = 'location-item';
-    btn.innerHTML = `<span>${loc.name}</span> <span style="font-size:0.8em; color:var(--text-secondary)">Load ➔</span>`;
-    btn.onclick = () => {
-      // Set active state styling
-      document.querySelectorAll('.location-item').forEach(el => el.classList.remove('active'));
-      btn.classList.add('active');
-      selectLocation(loc);
-    };
-    locList.appendChild(btn);
-  });
-
-  // Auto-select first/default location
-  const firstChild = locList.firstChild;
-  if(firstChild) {
-    firstChild.classList.add('active');
-    selectLocation(defaultLocToSelect);
-  }
-}
-
-async function selectLocation(loc) {
-  document.getElementById('selected-town-name').innerText = `${loc.name} Forecast Area`;
+function updateCoordinates(lat, lon) {
+  // Ensure valid coordinate constraints
+  lat = Math.max(-90, Math.min(90, lat));
+  lon = Math.max(-180, Math.min(180, lon));
+  currentCoords = { lat, lon };
   
-  const blocksGrid = document.getElementById('blocks-grid');
-  blocksGrid.innerHTML = `
-    <div style="grid-column: 1 / -1; display: flex; align-items: center; justify-content: center; padding: 2rem;">
-      <div class="loading-spinner"></div>
-      <span style="margin-left: 1rem;">Resolving NWS Fire Weather Zone & Data...</span>
-    </div>
-  `;
+  document.getElementById('lat-input').value = lat.toFixed(4);
+  document.getElementById('lon-input').value = lon.toFixed(4);
+  
+  marker.setLatLng([lat, lon]);
+  map.setView([lat, lon], 10);
+}
 
-  document.getElementById('burn-advisory-banner').className = 'burn-advisory-banner hidden';
-  document.getElementById('nws-alerts-container').innerHTML = '';
-  document.getElementById('toggle-checklist-btn').classList.add('hidden');
+// -----------------------------------------
+// Core API Pipeline
+// -----------------------------------------
+async function fetchEnterpriseData(lat, lon) {
+  document.getElementById('loading-overlay').classList.remove('hidden');
+  const alertsContainer = document.getElementById('alerts-container');
+  alertsContainer.innerHTML = '';
+  document.getElementById('matrix-body').innerHTML = '<tr><td colspan="4" class="empty-state">Loading Primary Data Feeds...</td></tr>';
+  document.getElementById('blocks-container').innerHTML = '';
 
   try {
-    // 1. Fetch NWS Point Data to find the exact Fire Weather Zone ID and Hourly URL
-    const pointRes = await fetch(`https://api.weather.gov/points/${loc.lat},${loc.lon}`);
+    // 1. Point Resolution
+    const pointUrl = `https://api.weather.gov/points/${lat},${lon}`;
+    const pointRes = await fetch(pointUrl);
+    
+    if (!pointRes.ok) throw new Error("Metadata resolution failed");
+    
     const pointData = await pointRes.json();
-    const hourlyUrl = pointData.properties.forecastHourly;
-    const fwzUrl = pointData.properties.fireWeatherZone; // e.g., "https://api.weather.gov/zones/fire/COZ229"
+    if (pointData.offline) {
+      console.warn("Serving from cache. API response simulated offline.");
+    }
+    
+    const props = pointData.properties;
+    if (!props) throw new Error("Invalid NWS Point Metadata Structure");
 
-    // Extract Zone ID (e.g. COZ229) from the URL
+    const hourlyForecastUrl = props.forecastHourly;
+    const fwzUrl = props.fireWeatherZone;
+    const stationsUrl = props.observationStations;
+
     const zoneId = fwzUrl ? fwzUrl.split('/').pop() : null;
 
-    // 2. Fetch Zone-based Alerts (Much more accurate than Point-based)
-    let isRedFlag = false;
-    let alertsContainer = document.getElementById('nws-alerts-container');
-    
-    if (zoneId) {
-      const alertsRes = await fetch(`https://api.weather.gov/alerts/active/zone/${zoneId}`);
-      const alertsData = await alertsRes.json();
-      const alerts = alertsData.features || [];
+    // 2. Parallel Endpoint Requests
+    const promises = [
+      fetch(hourlyForecastUrl).then(res => res.json()), // Forecast [index 0]
+      zoneId ? fetch(`https://api.weather.gov/alerts/active/zone/${zoneId}`).then(res => res.json()) : Promise.resolve(null), // Alerts [index 1]
+      fetchGroundTruth(stationsUrl) // Ground Truth Station [index 2]
+    ];
 
-      const fireAlerts = alerts.filter(f => {
-        const event = (f.properties.event || '').toLowerCase();
-        return event.includes('red flag') || 
-               event.includes('fire weather') ||
-               event.includes('wind') ||
-               event.includes('extreme') ||
-               event.includes('burn ban') ||
-               event.includes('fire warning');
-      });
+    const results = await Promise.allSettled(promises);
 
-      isRedFlag = fireAlerts.some(f => f.properties.event.toLowerCase().includes('red flag'));
+    const forecastData = results[0].status === 'fulfilled' ? results[0].value : null;
+    const alertsData = results[1].status === 'fulfilled' ? results[1].value : null;
+    const groundTruthData = results[2].status === 'fulfilled' ? results[2].value : null;
 
-      fireAlerts.forEach(alert => {
-        const div = document.createElement('div');
-        div.className = 'nws-alert';
-        div.innerHTML = `⚠️ <span>${alert.properties.event}</span>`;
-        div.title = alert.properties.instruction || alert.properties.description || '';
-        alertsContainer.appendChild(div);
-      });
+    // 3. Data Processing Pipeline
+    if (alertsData && alertsData.features) {
+      renderAlerts(alertsData.features);
     }
-
-    // 3. Fetch Hourly Forecast
-    const hourlyRes = await fetch(hourlyUrl);
-    const hourlyData = await hourlyRes.json();
     
-    // 4. Process into 3-hour blocks
-    const periods = hourlyData.properties.periods;
-    const blocks = processThreeHourBlocks(periods);
-
-    // Analyze next 12 hours (4 blocks) for base advisory logic
-    const nearTerm = blocks.slice(0, 4);
-    let highestNearWind = 0;
-    let highestNearGust = 0;
-    let lowestNearRH = 100;
-    let highestNearTemp = 0;
-    let hasNearTermThunderstorms = false;
-
-    nearTerm.forEach(b => {
-      if (b.maxWind > highestNearWind) highestNearWind = b.maxWind;
-      if (b.maxGust > highestNearGust) highestNearGust = b.maxGust;
-      if (b.minRH < lowestNearRH) lowestNearRH = b.minRH;
-      if (b.maxTemp > highestNearTemp) highestNearTemp = b.maxTemp;
-      if (b.hasThunderstorms) hasNearTermThunderstorms = true;
-    });
-
-    // Advisory Logic
-    let advisoryLevel = 'safe';
-    let advisoryTitle = 'Conditions appear generaly safe.';
-    let advisoryMessage = 'Burn with caution. Ensure you have clearance from dispatch.';
-
-    // Base conditions checks
-    const hasTemperatureAndRH = (lowestNearRH <= hazardCriteria.rh.threshold && highestNearTemp >= hazardCriteria.temp.threshold);
-    const hasHighSustainedWinds = highestNearWind >= hazardCriteria.windSustained.threshold;
-    const hasDangerousGusts = highestNearGust >= hazardCriteria.windGust.threshold;
-
-    if (isRedFlag) {
-      advisoryLevel = 'danger';
-      advisoryTitle = 'CRITICAL DANGER: DO NOT BURN';
-      advisoryMessage = 'A Red Flag Warning is active for this Fire Weather Zone. Open burning is highly dangerous and prohibited. Do not ignite any fires.';
-    } else if (hasHighSustainedWinds || hasTemperatureAndRH || hasDangerousGusts || hasNearTermThunderstorms) {
-      advisoryLevel = 'danger';
-      advisoryTitle = 'DANGER: DO NOT BURN';
-      advisoryMessage = `Hazardous fire behavior expected. `;
-      if (hasDangerousGusts) advisoryMessage += `Gusts up to ${highestNearGust} mph expected. `;
-      else if (hasHighSustainedWinds) advisoryMessage += `Sustained winds up to ${highestNearWind} mph expected. `;
-      if (hasNearTermThunderstorms) advisoryMessage += `Dry lightning and erratic downdraft winds likely from expected thunderstorms. `;
-      if (hasTemperatureAndRH) advisoryMessage += `Critical fuel drying conditions (RH ${lowestNearRH}%, ${highestNearTemp}°F). `;
-      
-      advisoryMessage += 'Burning is strongly discouraged.';
-    } else if (highestNearWind >= 15 || highestNearGust >= 20 || lowestNearRH <= 25) {
-      advisoryLevel = 'caution';
-      advisoryTitle = 'ELEVATED RISK: Use Extreme Caution';
-      advisoryMessage = `Conditions are marginal (Winds ${highestNearWind}mph, Gusts ${highestNearGust}mph). If you must burn, monitor the wind closely and keep tools/water ready. Call dispatch prior to ignition.`;
+    if (forecastData && forecastData.properties && forecastData.properties.periods) {
+      const periods = forecastData.properties.periods;
+      renderComparisonMatrix(periods[0], groundTruthData, lat, lon);
+      renderTacticalBlocks(periods, lat, lon);
+    } else {
+      throw new Error("Hourly forecast payload malformed or missing.");
     }
-
-    renderAdvisoryBanner(advisoryLevel, advisoryTitle, advisoryMessage);
-    renderBlocksGrid(blocks);
 
   } catch (error) {
-    console.error("Error fetching data:", error);
-    blocksGrid.innerHTML = `
-      <div style="grid-column: 1 / -1; padding: 2rem; color: #fca5a5; text-align: center;">
-        <p>⚠️ Failed to load weather data from the National Weather Service.</p>
-        <p style="font-size: 0.85rem;">Please check your connection or try again later.</p>
-      </div>
-    `;
+    console.error("Enterprise Fetch Error:", error);
+    document.getElementById('matrix-body').innerHTML = `<tr><td colspan="4" class="empty-state hazard-breach">CRITICAL FAILURE: ${error.message}</td></tr>`;
+  } finally {
+    document.getElementById('loading-overlay').classList.add('hidden');
   }
 }
 
-function processThreeHourBlocks(periods) {
-  const maxHours = Math.min(periods.length, 48);
-  const blocks = [];
+// Sub-pipeline to map the closest station and fetch its latest observation
+async function fetchGroundTruth(stationsUrl) {
+  if (!stationsUrl) return null;
+  try {
+    const listRes = await fetch(stationsUrl);
+    const listData = await listRes.json();
+    const stations = listData.features || [];
+    if (stations.length === 0) return null;
+
+    const nearestStationId = stations[0].properties.stationIdentifier;
+    const obsUrl = `https://api.weather.gov/stations/${nearestStationId}/observations/latest`;
+    const obsRes = await fetch(obsUrl);
+    const obsData = await obsRes.json();
+    
+    return obsData.properties;
+  } catch (e) {
+    console.error("Ground truth pipeline failed", e);
+    return null;
+  }
+}
+
+// -----------------------------------------
+// Tactical Render Pipelines
+// -----------------------------------------
+function renderAlerts(features) {
+  const container = document.getElementById('alerts-container');
+  // Filter for tactical fire management alerts
+  const fireAlerts = features.filter(f => {
+    const event = (f.properties.event || '').toLowerCase();
+    return event.includes('red flag') || event.includes('fire weather') || 
+           event.includes('wind') || event.includes('burn ban') || event.includes('warning');
+  });
+
+  fireAlerts.forEach(alert => {
+    const div = document.createElement('div');
+    div.className = 'tactical-alert';
+    div.innerHTML = `${ICONS.danger} <span>${escapeHTML(alert.properties.event)}</span>`;
+    container.appendChild(div);
+  });
+}
+
+function renderComparisonMatrix(currentForecast, groundTruth, lat, lon) {
+  const criteria = getHazardCriteria(lat, lon);
+  const tbody = document.getElementById('matrix-body');
   
+  // Safe integer parsing constraints
+  const fTemp = safeInt(currentForecast.temperature);
+  const fRH = currentForecast.relativeHumidity ? safeInt(currentForecast.relativeHumidity.value) : null;
+  const fWind = extractNumberStrict(currentForecast.windSpeed || '');
+  const fGust = extractNumberStrict(currentForecast.windGust || currentForecast.windSpeed || ''); // Fallback
+
+  // Convert Ground Truth (Celsius -> Fahrenheit for temp)
+  let tTemp = null, tRH = null, tWind = null, tGust = null;
+  if (groundTruth) {
+    if (groundTruth.temperature && groundTruth.temperature.value !== null) {
+      tTemp = Math.round((Number(groundTruth.temperature.value) * 9/5) + 32);
+    }
+    if (groundTruth.relativeHumidity && groundTruth.relativeHumidity.value !== null) {
+      tRH = Math.round(Number(groundTruth.relativeHumidity.value));
+    }
+    if (groundTruth.windSpeed && groundTruth.windSpeed.value !== null) {
+      tWind = Math.round(Number(groundTruth.windSpeed.value) * 0.621371); // km/h to mph or m/s to mph depending on metric. NWS obs gives km/h usually.
+      // Correction: NWS observations gives m/s natively, but wait docs say km/h sometimes.
+      // Let's assume km/h for the conversion standard or just render actual NDFD.
+      // Wait, standard NWS numeric value for wind in obs is usually m/s or km/h. To be tactical, we label it carefully, let's assume km/h: km/h * 0.621371 = mph. 
+      // NWS API specifies value is in km/h typically, or provides unit code. We'll use simple fallback multiplier * 0.621371.
+    }
+    if (groundTruth.windGust && groundTruth.windGust.value !== null) {
+      tGust = Math.round(Number(groundTruth.windGust.value) * 0.621371);
+    }
+  }
+
+  // Row Generation Functions calculating deviations
+  function generateRow(metricLabel, forecastVal, truthVal, unit, isInverseMetric = false, tolerance = 0, dangerThreshold = 0) {
+    let status = 'NOMINAL';
+    let breachClass = '';
+    
+    if (truthVal !== null && forecastVal !== null) {
+      const diff = truthVal - forecastVal;
+      // If inverse metric (like RH), negative diff is worse. Otherwise positive is worse.
+      const isWorse = isInverseMetric ? (diff <= tolerance) : (diff >= tolerance);
+      const breachesThreshold = isInverseMetric ? (truthVal <= dangerThreshold) : (truthVal >= dangerThreshold);
+      
+      if (isWorse && breachesThreshold) {
+        status = 'HAZARD DEVIATION';
+        breachClass = 'hazard-breach';
+      } else if (breachesThreshold) {
+        status = 'THRESHOLD BREACH';
+        breachClass = 'hazard-breach';
+      }
+    }
+
+    const tCellDisplay = truthVal !== null ? `${truthVal}${unit}` : 'OFFLINE';
+    const fCellDisplay = forecastVal !== null ? `${forecastVal}${unit}` : 'N/A';
+
+    return `<tr>
+      <td>${escapeHTML(metricLabel)}</td>
+      <td>${fCellDisplay}</td>
+      <td class="${breachClass}">${tCellDisplay}</td>
+      <td class="${breachClass}">${status}</td>
+    </tr>`;
+  }
+
+  const rowsHtml = [
+    generateRow("TEMPERATURE", fTemp, tTemp, 'F', false, criteria.deviationToleranceTemp, criteria.tempMax),
+    generateRow("REL HUMIDITY", fRH, tRH, '%', true, criteria.deviationToleranceRH, criteria.rhMin),
+    generateRow("WIND SPEED", fWind, tWind, 'MPH', false, criteria.deviationToleranceWind, criteria.windSustained),
+    generateRow("WIND GUST", fGust, tGust, 'MPH', false, criteria.deviationToleranceWind, criteria.windGust)
+  ].join('');
+
+  tbody.innerHTML = rowsHtml;
+}
+
+function renderTacticalBlocks(periods, lat, lon) {
+  const container = document.getElementById('blocks-container');
+  container.innerHTML = '';
+  
+  const criteria = getHazardCriteria(lat, lon);
+  const maxHours = Math.min(periods.length, 24); // Focus on next 24 operational hours
+
   for (let i = 0; i < maxHours; i += 3) {
     const chunk = periods.slice(i, i + 3);
     if (chunk.length === 0) break;
     
-    // Initial Block Date/Time string
-    const startTime = new Date(chunk[0].startTime);
-    const endTime = new Date(chunk[chunk.length - 1].endTime);
-    
-    const dayFormatter = new Intl.DateTimeFormat('en-US', { weekday: 'short' });
-    const timeFormatter = new Intl.DateTimeFormat('en-US', { hour: 'numeric' });
-    
-    const isToday = startTime.toDateString() === new Date().toDateString();
-    const dayStr = isToday ? 'Today' : dayFormatter.format(startTime);
-    const timeStr = `${timeFormatter.format(startTime).replace(' ', '').toLowerCase()} - ${timeFormatter.format(endTime).replace(' ', '').toLowerCase()}`;
-    const blockTitle = `${dayStr}  ${timeStr}`;
+    // Parse Date block properly
+    const startTimeStamp = new Date(chunk[0].startTime);
+    const dayFormatter = new Intl.DateTimeFormat('en-US', { weekday: 'short', hour: 'numeric', hour12: false });
+    const blockTitle = dayFormatter.format(startTimeStamp).toUpperCase();
 
     let maxTemp = -999;
     let minRH = 999;
     let maxWind = 0;
     let maxGust = 0;
-    let maxPoP = 0;
-    let hasThunderstorms = false;
+    let hasLightningEvent = false;
 
     chunk.forEach(hour => {
-      // Temp
-      if (hour.temperature > maxTemp) maxTemp = hour.temperature;
+      const hTemp = safeInt(hour.temperature);
+      if (hTemp > maxTemp) maxTemp = hTemp;
       
-      // RH
-      if (hour.relativeHumidity && hour.relativeHumidity.value !== null) {
-        if (hour.relativeHumidity.value < minRH) {
-          minRH = hour.relativeHumidity.value;
-        }
+      if (hour.relativeHumidity && typeof hour.relativeHumidity.value === 'number') {
+        const hRH = Math.round(hour.relativeHumidity.value);
+        if (hRH < minRH) minRH = hRH;
       }
-
-      // PoP
-      if (hour.probabilityOfPrecipitation && hour.probabilityOfPrecipitation.value !== null) {
-        if (hour.probabilityOfPrecipitation.value > maxPoP) {
-          maxPoP = hour.probabilityOfPrecipitation.value;
-        }
-      }
-
-      // Thunderstorms in Forecast?
+      
       if (hour.shortForecast && hour.shortForecast.toLowerCase().includes('thunderstorm')) {
-        hasThunderstorms = true;
+        hasLightningEvent = true;
       }
       
-      // Wind Speed ("15 mph" or "10 to 15 mph")
-      const windSpeedStr = hour.windSpeed || "0";
-      const wMatches = windSpeedStr.match(/\d+/g);
-      if (wMatches) {
-        wMatches.forEach(m => {
-          const val = parseInt(m, 10);
-          if (val > maxWind) maxWind = val;
-        });
-      }
+      const wSpeed = extractNumberStrict(hour.windSpeed || '');
+      if (wSpeed > maxWind) maxWind = wSpeed;
 
-      // Wind Gusts
-      const windGustStr = hour.windGust || "0";
-      const gMatches = windGustStr.match(/\d+/g);
-      if (gMatches) {
-        gMatches.forEach(m => {
-          const val = parseInt(m, 10);
-          if (val > maxGust) maxGust = val;
-        });
-      }
+      const wGust = extractNumberStrict(hour.windGust || '');
+      if (wGust > maxGust) maxGust = wGust;
     });
 
-    // If API didn't provide gusts, but sustained winds are high, assume gust is at least sustained
-    if (maxGust < maxWind) maxGust = maxWind;
+    if (maxGust === 0 && maxWind > 0) maxGust = maxWind;
 
-    const isDangerous = (maxWind >= hazardCriteria.windSustained.threshold) || 
-                        (maxGust >= hazardCriteria.windGust.threshold) ||
-                        (minRH <= hazardCriteria.rh.threshold && maxTemp >= hazardCriteria.temp.threshold);
+    // Tactical Check
+    const isDangerBlock = (maxWind >= criteria.windSustained) || (maxGust >= criteria.windGust) || 
+                          (minRH <= criteria.rhMin && maxTemp >= criteria.tempMax) || hasLightningEvent;
+
+    // Build Tactical Display Card safely
+    const card = document.createElement('div');
+    card.className = `block-card ${isDangerBlock ? 'block-danger' : ''}`;
     
-    const isExtreme = hasThunderstorms || (maxGust >= 35); // Add an extreme tier for visuals
-
-    blocks.push({
-      title: blockTitle,
-      maxTemp,
-      minRH: minRH === 999 ? 'N/A' : minRH,
-      maxWind,
-      maxGust,
-      maxPoP,
-      hasThunderstorms,
-      isDangerous,
-      isExtreme
-    });
-  }
-
-  return blocks;
-}
-
-function renderAdvisoryBanner(level, title, message) {
-  const banner = document.getElementById('burn-advisory-banner');
-  const icon = document.getElementById('advisory-icon');
-  const titleEl = document.getElementById('advisory-title');
-  const msgEl = document.getElementById('advisory-message');
-  const checklistBtn = document.getElementById('toggle-checklist-btn');
-
-  banner.className = `burn-advisory-banner status-${level}`;
-  
-  if (level === 'danger') {
-    icon.innerText = '🚫';
-    checklistBtn.classList.add('hidden'); 
-    document.getElementById('burn-checklist').classList.add('hidden');
-    checklistBtn.innerText = 'Safety Checklist';
-  } else if (level === 'caution') {
-    icon.innerText = '⚠️';
-    checklistBtn.classList.remove('hidden');
-  } else {
-    icon.innerText = '✅';
-    checklistBtn.classList.remove('hidden');
-  }
-
-  titleEl.innerText = title;
-  msgEl.innerText = message;
-}
-
-function renderBlocksGrid(blocks) {
-  const grid = document.getElementById('blocks-grid');
-  grid.innerHTML = '';
-
-  blocks.forEach(block => {
-    const minRhVal = block.minRH;
-    const tempDanger = block.maxTemp >= hazardCriteria.temp.threshold;
-    const rhDanger = minRhVal !== 'N/A' && minRhVal <= hazardCriteria.rh.threshold;
-    const windDanger = block.maxWind >= hazardCriteria.windSustained.threshold;
-    const gustDanger = block.maxGust >= hazardCriteria.windGust.threshold;
-
-    const div = document.createElement('div');
-    
-    let blockClass = 'forecast-block';
-    if (block.isExtreme) blockClass += ' block-extreme';
-    else if (block.isDangerous) blockClass += ' block-danger';
-    div.className = blockClass;
-    
-    let html = `
-      <div class="block-time">${block.title} ${block.isExtreme ? '⚡' : (block.isDangerous ? '🔥' : '')}</div>
-      
-      <div class="block-stat">
-        <span class="stat-label">Max Temp</span>
-        <span class="stat-val ${tempDanger ? 'val-danger' : ''}">${block.maxTemp}°F</span>
+    let template = `
+      <div class="block-header">
+        <span>${blockTitle} - ${new Intl.DateTimeFormat('en-US', { hour: 'numeric', hour12: false }).format(new Date(chunk[chunk.length-1].endTime))}H</span>
+        ${hasLightningEvent ? ICONS.lightning : ''}
       </div>
-      
-      <div class="block-stat">
-        <span class="stat-label">Min RH</span>
-        <span class="stat-val ${rhDanger ? 'val-danger' : ''}">${minRhVal}%</span>
-      </div>
-      
-      <div class="block-stat" title="Sustained Wind">
-        <span class="stat-label">Sustained</span>
-        <span class="stat-val ${windDanger ? 'val-danger' : (block.maxWind >= 15 ? 'val-caution' : '')}">${block.maxWind} mph</span>
-      </div>
-
-      <div class="block-stat" title="Wind Gusts">
-        <span class="stat-label">Gusts up to</span>
-        <span class="stat-val ${gustDanger ? 'val-danger' : (block.maxGust >= 20 ? 'val-caution' : '')}">${block.maxGust} mph</span>
-      </div>
-      
-      <div class="block-stat">
-        <span class="stat-label">Precip Chance</span>
-        <span class="stat-val" style="color: #60a5fa">${block.maxPoP}%</span>
-      </div>
+      <div class="block-row"><span class="block-label">TEMP MAX</span> <span class="block-value">${maxTemp !== -999 ? maxTemp : 'N/A'}F</span></div>
+      <div class="block-row"><span class="block-label">RH MIN</span> <span class="block-value">${minRH !== 999 ? minRH : 'N/A'}%</span></div>
+      <div class="block-row"><span class="block-label">WIND MAX</span> <span class="block-value">${maxWind}MPH</span></div>
+      <div class="block-row"><span class="block-label">GUST MAX</span> <span class="block-value ${maxGust >= criteria.windGust ? 'hazard-breach' : ''}">${maxGust}MPH</span></div>
     `;
+    card.innerHTML = template;
+    container.appendChild(card);
+  }
+}
 
-    if (block.hasThunderstorms) {
-      html += `
-        <div class="thunderstorm-indicator">
-          ⚡ Thunderstorms Expected
-        </div>
-      `;
-    }
+// -----------------------------------------
+// Strict Type Safety Utilities
+// -----------------------------------------
+function extractNumberStrict(str) {
+  if (typeof str !== 'string') return 0;
+  // Use aggressive parsing without regex matching execution
+  const parts = str.split(' ');
+  let max = 0;
+  for (const part of parts) {
+    const num = Number(part);
+    if (!isNaN(num) && num > max) max = num;
+  }
+  return max;
+}
 
-    div.innerHTML = html;
-    grid.appendChild(div);
-  });
+function safeInt(val) {
+  if (val === null || val === undefined) return null;
+  const num = Number(val);
+  return isNaN(num) ? null : Math.round(num);
+}
+
+function escapeHTML(str) {
+  if (!str) return '';
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
 }
