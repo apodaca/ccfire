@@ -237,7 +237,7 @@ async function fetchEnterpriseData(lat, lon) {
     const promises = [
       fetch(hourlyForecastUrl).then(res => res.json()),
       zoneId ? fetch(`https://api.weather.gov/alerts/active/zone/${zoneId}`).then(res => res.json()) : Promise.resolve(null),
-      fetchGroundTruth(stationsUrl),
+      fetchGroundTruth(stationsUrl, lat, lon),
       fwzUrl ? fetch(fwzUrl).then(res => res.json()) : Promise.resolve(null) // Fetch Zone Metadata
     ];
 
@@ -278,7 +278,7 @@ async function fetchEnterpriseData(lat, lon) {
   }
 }
 
-async function fetchGroundTruth(stationsUrl) {
+async function fetchGroundTruth(stationsUrl, userLat, userLon) {
   if (!stationsUrl) return null;
   try {
     const listRes = await fetch(stationsUrl);
@@ -288,7 +288,14 @@ async function fetchGroundTruth(stationsUrl) {
 
     const nearestStation = stations[0];
     const nearestStationId = nearestStation.properties.stationIdentifier;
-    const stationName = nearestStation.properties.name || nearestStationId;
+    let stationName = nearestStation.properties.name || nearestStationId;
+
+    if (userLat !== undefined && userLon !== undefined && nearestStation.geometry && nearestStation.geometry.coordinates) {
+      const sLon = nearestStation.geometry.coordinates[0];
+      const sLat = nearestStation.geometry.coordinates[1];
+      const distMiles = calculateDistance(userLat, userLon, sLat, sLon);
+      stationName += ` (${distMiles.toFixed(1)} MILES AWAY)`;
+    }
 
     const obsUrl = `https://api.weather.gov/stations/${nearestStationId}/observations/latest`;
     const obsRes = await fetch(obsUrl);
@@ -307,6 +314,17 @@ async function fetchGroundTruth(stationsUrl) {
 // -----------------------------------------
 // Utility: Fine Dead Fuel Moisture & Drivers
 // -----------------------------------------
+function calculateDistance(lat1, lon1, lat2, lon2) {
+  const R = 3958.8; // Radius of the Earth in miles
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+}
+
 function calculateFDFM(tempF, rh) {
   let rhClamped = Math.max(0, Math.min(100, rh));
   let m = 0;
