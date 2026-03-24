@@ -1,18 +1,18 @@
-/* Professional Tactical Theme */
+/* Professional Tactical Theme - Forced High Contrast Light Mode for Outdoor Visibility */
 :root {
-  --bg-primary: #121212;
-  --bg-secondary: #1e1e1e;
-  --bg-tertiary: #2a2a2a;
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8f9fa;
+  --bg-tertiary: #e9ecef;
   
-  --border-muted: #333333;
-  --border-active: #5bc0de;
+  --border-muted: #ced4da;
+  --border-active: #0056b3;
   
-  --text-active: #ffffff;
-  --text-muted: #b0b0b0;
+  --text-active: #111111;
+  --text-muted: #495057;
   
-  --safe: #2ebd59;
-  --caution: #f0ad4e;
-  --danger-bg: #c9302c;
+  --safe: #28a745;
+  --caution: #fd7e14; /* Deep orange for better contrast on white than yellow */
+  --danger-bg: #dc3545;
   --danger-text: #ffffff;
   
   --font-family: 'Roboto', sans-serif;
@@ -44,9 +44,10 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 2px solid var(--border-muted);
+  border-bottom: 3px solid var(--border-muted);
   padding-bottom: 1rem;
   margin-bottom: 1.5rem;
+  background-color: var(--bg-primary);
 }
 
 .header-content {
@@ -63,7 +64,7 @@ body {
 
 h1 {
   font-size: 1.5rem;
-  font-weight: 700;
+  font-weight: 900;
   color: var(--text-active);
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -71,7 +72,8 @@ h1 {
 
 .subtitle {
   color: var(--text-muted);
-  font-size: 0.8rem;
+  font-size: 0.85rem;
+  font-weight: 700;
   letter-spacing: 0.05em;
 }
 
@@ -80,7 +82,7 @@ h1 {
   display: flex;
   align-items: center;
   background-color: var(--caution);
-  color: #000;
+  color: #fff;
   padding: 0.5rem 1rem;
   border-radius: var(--radius);
   font-weight: 700;
@@ -115,13 +117,14 @@ h1 {
   border: 1px solid var(--border-muted);
   border-radius: var(--radius);
   padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
 .section-title {
   font-size: 0.95rem;
-  font-weight: 700;
+  font-weight: 900;
   color: var(--border-active);
-  border-bottom: 1px solid var(--border-muted);
+  border-bottom: 2px solid var(--border-active);
   padding-bottom: 0.5rem;
   margin-bottom: 1rem;
   text-transform: uppercase;
@@ -138,7 +141,8 @@ h1 {
 }
 .input-group label {
   display: block;
-  font-size: 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 700;
   color: var(--text-muted);
   margin-bottom: 0.25rem;
   text-transform: uppercase;
@@ -146,23 +150,18 @@ h1 {
 .input-group input {
   width: 100%;
   padding: 0.75rem;
-  background-color: var(--bg-tertiary);
-  border: 1px solid var(--border-muted);
+  background-color: var(--bg-primary);
+  border: 2px solid var(--border-muted);
   color: var(--text-active);
   border-radius: var(--radius);
   font-family: monospace;
-  font-size: 1rem;
+  font-size: 1.1rem;
+  font-weight: 700;
 }
 .input-group input:focus {
   outline: none;
   border-color: var(--border-active);
-}
-
-.action-row {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  margin-bottom: 1.5rem;
+  background-color: #fff;
 }
 
 button {
@@ -170,50 +169,57 @@ button {
   align-items: center;
   justify-content: center;
   width: 100%;
-  padding: 0.75rem;
-  font-weight: 700;
-  font-size: 0.85rem;
+  padding: 1rem;
+  font-weight: 900;
+  font-size: 0.95rem;
   text-transform: uppercase;
   border: none;
   border-radius: var(--radius);
   cursor: pointer;
   transition: background-color 0.2s;
+  touch-action: manipulation;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 button svg {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   margin-right: 0.5rem;
 }
 
 .btn-primary {
-  background-color: #337ab7;
+  background-color: #0056b3;
   color: #fff;
 }
-.btn-primary:hover { background-color: #286090; }
+.btn-primary:active { background-color: #004085; transform: scale(0.98); }
 
 .btn-secondary {
-  background-color: var(--bg-tertiary);
+  background-color: #e2e6ea;
   color: var(--text-active);
-  border: 1px solid #444;
+  border: 2px solid #dae0e5;
 }
-.btn-secondary:hover { background-color: #333; }
+.btn-secondary:active { background-color: #dae0e5; transform: scale(0.98); }
+
+.btn-text {
+  background: transparent !important;
+  color: var(--border-active) !important;
+  border: 2px dashed var(--border-muted) !important;
+  box-shadow: none !important;
+}
 
 /* Interactive Map */
 .map-container {
   height: 300px;
-  background-color: var(--bg-tertiary);
-  border: 1px solid var(--border-muted);
+  background-color: #e9ecef;
+  border: 2px solid var(--border-muted);
   border-radius: var(--radius);
   position: relative;
   overflow: hidden;
+  z-index: 1; /* Keep leaflet controls from hiding buttons */
 }
-/* Leaflet Overrides for Dark Mode */
+/* Standard Light Leaflet - no filters needed for light mode */
 .leaflet-container {
-  background: var(--bg-tertiary);
+  background: #e9ecef;
   font-family: var(--font-family);
-}
-.leaflet-tile {
-  filter: hue-rotate(180deg) invert(100%) contrast(120%) brightness(0.9);
 }
 
 /* Alerts */
@@ -229,11 +235,13 @@ button svg {
   color: var(--danger-text);
   padding: 1rem;
   border-radius: var(--radius);
-  font-weight: 700;
+  font-weight: 900;
+  font-size: 1rem;
   display: flex;
   align-items: center;
   gap: 0.75rem;
   text-transform: uppercase;
+  box-shadow: 0 4px 6px rgba(220, 53, 69, 0.3);
 }
 .tactical-alert svg {
   width: 24px;
@@ -244,44 +252,49 @@ button svg {
 .data-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
+  background-color: var(--bg-primary);
 }
 
 .data-table th, .data-table td {
   padding: 0.75rem;
   text-align: left;
-  border-bottom: 1px solid var(--border-muted);
+  border-bottom: 2px solid var(--border-muted);
 }
 
 .data-table th {
-  color: var(--text-muted);
-  font-weight: 500;
+  color: var(--text-active);
+  font-weight: 900;
   text-transform: uppercase;
+  background-color: var(--bg-tertiary);
 }
 
 .data-source-label {
-  font-size: 0.65rem;
-  color: #777;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  font-weight: 400;
 }
 
 .empty-state {
   text-align: center;
   color: var(--text-muted);
-  font-style: italic;
+  font-weight: 700;
   padding: 2rem !important;
 }
 
 /* Highly visible hazard styling */
 .metric-safe {
   color: var(--safe);
+  font-weight: 700;
 }
 .metric-caution {
   color: var(--caution);
+  font-weight: 700;
 }
 .hazard-breach {
   background-color: var(--danger-bg) !important;
   color: var(--danger-text) !important;
-  font-weight: 700;
+  font-weight: 900 !important;
 }
 
 /* Near-Term Blocks */
@@ -292,43 +305,48 @@ button svg {
 }
 
 .block-card {
-  background-color: var(--bg-tertiary);
+  background-color: var(--bg-primary);
   border: 2px solid var(--border-muted);
   border-radius: var(--radius);
   padding: 1rem;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  touch-action: manipulation;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.block-card:hover, .block-card:active {
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
 }
 
 .block-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid var(--border-muted);
+  border-bottom: 2px solid var(--border-muted);
   padding-bottom: 0.5rem;
   margin-bottom: 0.5rem;
-  font-weight: 700;
-  font-size: 0.85rem;
-  color: var(--text-muted);
+  font-weight: 900;
+  font-size: 0.9rem;
+  color: var(--text-active);
+  text-transform: uppercase;
 }
 
 .block-header svg {
   width: 18px;
   height: 18px;
-  color: var(--danger-bg);
+  color: var(--danger-text); /* Usually inside a red box when visible */
 }
 
 .block-row {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 0.25rem;
-  font-size: 0.85rem;
+  margin-bottom: 0.35rem;
+  font-size: 0.9rem;
 }
 
-.block-label { color: #888; }
-.block-value { font-family: monospace; font-size: 0.95rem; }
-
-.block-danger {
-  border-color: var(--danger-bg);
-}
+.block-label { color: var(--text-muted); font-weight: 700; }
+.block-value { font-family: monospace; font-size: 1rem; font-weight: 900; }
 
 /* Loader */
 .loading-overlay {
@@ -338,12 +356,14 @@ button svg {
   gap: 1rem;
   padding: 2rem;
   color: var(--border-active);
-  font-weight: 700;
+  font-weight: 900;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius);
 }
 .spinner {
-  width: 20px;
-  height: 20px;
-  border: 3px solid rgba(255,255,255,0.1);
+  width: 24px;
+  height: 24px;
+  border: 4px solid rgba(0,86,179,0.2);
   border-top-color: var(--border-active);
   border-radius: 50%;
   animation: spin 1s linear infinite;
@@ -357,32 +377,33 @@ button svg {
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: rgba(0, 0, 0, 0.9);
+  background-color: rgba(0, 0, 0, 0.95);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 9999;
 }
 .modal-content {
-  background-color: var(--bg-secondary);
-  border: 2px solid var(--danger-bg);
+  background-color: var(--bg-primary);
+  border: 4px solid var(--danger-bg);
   border-radius: var(--radius);
   max-width: 600px;
   width: 90%;
   padding: 2rem;
-  box-shadow: 0 0 20px rgba(201, 48, 44, 0.4);
+  box-shadow: 0 0 30px rgba(220, 53, 69, 0.6);
 }
 .modal-header h2 {
   color: var(--danger-bg);
   text-align: center;
   margin-bottom: 1.5rem;
-  border-bottom: 1px solid var(--border-muted);
+  border-bottom: 2px solid calc(var(--border-muted));
   padding-bottom: 0.5rem;
 }
 .modal-body p {
-  margin-bottom: 1rem;
+  margin-bottom: 1.25rem;
   color: var(--text-active);
-  font-size: 0.95rem;
+  font-size: 1.05rem;
+  font-weight: 700;
 }
 .modal-footer {
   margin-top: 2rem;
@@ -396,15 +417,16 @@ button svg {
 }
 .fuel-label {
   display: block;
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: var(--text-muted);
+  font-size: 0.9rem;
+  font-weight: 900;
+  color: var(--text-active);
   margin-bottom: 0.5rem;
+  text-transform: uppercase;
 }
 .segmented-control {
   display: flex;
-  background-color: var(--bg-tertiary);
-  border: 1px solid var(--border-muted);
+  background-color: var(--bg-secondary);
+  border: 2px solid var(--border-muted);
   border-radius: var(--radius);
   overflow: hidden;
 }
@@ -414,53 +436,49 @@ button svg {
 .segmented-control label {
   flex: 1;
   text-align: center;
-  padding: 0.75rem;
-  font-size: 0.85rem;
-  font-weight: 700;
+  padding: 1rem;
+  font-size: 0.95rem;
+  font-weight: 900;
   cursor: pointer;
-  border-right: 1px solid var(--border-muted);
+  border-right: 2px solid var(--border-muted);
   transition: all 0.2s;
   color: var(--text-muted);
+  touch-action: manipulation;
 }
 .segmented-control label:last-child {
   border-right: none;
 }
 .segmented-control input[type="radio"]:checked + label {
-  background-color: var(--border-active);
+  background-color: var(--text-active);
   color: var(--bg-primary);
 }
 
 /* Hazard Levels (Applied to Forecast Blocks) */
 .hazard-low { border-color: var(--safe); }
-.hazard-low > .block-header { color: var(--safe); border-color: var(--safe); }
+.hazard-low > .block-header { color: #ffffff; background-color: var(--safe); padding: 0.75rem; margin: -1rem -1rem 1rem -1rem; border-radius: var(--radius) var(--radius) 0 0; }
 .hazard-elevated { border-color: var(--caution); }
-.hazard-elevated > .block-header { color: var(--caution); border-color: var(--caution); }
-.hazard-escalated { border-color: #d9534f; } /* Darker Orange/Red */
-.hazard-escalated > .block-header { color: #d9534f; border-color: #d9534f; }
-.hazard-extreme { border-color: var(--danger-bg); background-color: rgba(201, 48, 44, 0.1); }
-.hazard-extreme > .block-header { color: var(--danger-text); background-color: var(--danger-bg); padding: 0.5rem; margin: -1rem -1rem 1rem -1rem; border-radius: var(--radius) var(--radius) 0 0; }
+.hazard-elevated > .block-header { color: #ffffff; background-color: var(--caution); padding: 0.75rem; margin: -1rem -1rem 1rem -1rem; border-radius: var(--radius) var(--radius) 0 0; }
+.hazard-escalated { border-color: #d9534f; }
+.hazard-escalated > .block-header { color: #ffffff; background-color: #d9534f; padding: 0.75rem; margin: -1rem -1rem 1rem -1rem; border-radius: var(--radius) var(--radius) 0 0; }
+.hazard-extreme { border-color: var(--danger-bg); background-color: rgba(220, 53, 69, 0.05); }
+.hazard-extreme > .block-header { color: #ffffff; background-color: var(--danger-bg); padding: 0.75rem; margin: -1rem -1rem 1rem -1rem; border-radius: var(--radius) var(--radius) 0 0; }
 
 /* Interactive Accordion Behaviors */
-.block-card {
-  cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-.block-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-}
 .block-card.expanded {
-  grid-column: 1 / -1; /* Take up full width when expanded */
-  transform: none;
+  grid-column: 1 / -1; 
+  background-color: var(--bg-secondary);
+  border-width: 3px;
 }
 
 .expected-behavior {
   display: none;
   margin-top: 1rem;
   padding-top: 1rem;
-  border-top: 1px dashed var(--border-muted);
-  font-size: 0.9rem;
-  line-height: 1.4;
+  border-top: 2px dashed var(--border-muted);
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.5;
+  color: var(--text-active);
 }
 .block-card.expanded .expected-behavior {
   display: block;

@@ -56,26 +56,31 @@
       <section class="panel geo-panel">
         <h2 class="section-title">GEOGRAPHIC INPUT</h2>
         
-        <div class="input-group">
-          <label for="lat-input">Latitude</label>
-          <input type="number" id="lat-input" step="0.0001" placeholder="37.1995" />
-        </div>
-        <div class="input-group">
-          <label for="lon-input">Longitude</label>
-          <input type="number" id="lon-input" step="0.0001" placeholder="-105.4236" />
+        <button id="btn-geolocation" class="btn-secondary" style="margin-bottom: 1rem;">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
+          USE CURRENT LOCATION
+        </button>
+
+        <div id="map-container" class="map-container" style="margin-bottom: 1rem;"></div>
+
+        <button id="btn-toggle-manual" class="btn-text" style="width:100%; text-align:left; background:transparent; color:#5bc0de; border:1px dashed #ccc; padding:0.5rem; margin-bottom:1rem; justify-content:flex-start;">
+          + ENTER COORDINATES MANUALLY
+        </button>
+
+        <div id="manual-input-container" class="hidden" style="border-left: 2px solid #ccc; padding-left: 1rem; margin-bottom: 1rem;">
+          <div class="input-group">
+            <label for="lat-input">Latitude</label>
+            <input type="number" id="lat-input" step="0.0001" placeholder="37.1995" />
+          </div>
+          <div class="input-group">
+            <label for="lon-input">Longitude</label>
+            <input type="number" id="lon-input" step="0.0001" placeholder="-105.4236" />
+          </div>
         </div>
         
-        <div class="action-row">
-          <button id="btn-geolocation" class="btn-secondary">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
-            USE CURRENT LOCATION
-          </button>
-          <button id="btn-fetch" class="btn-primary">
-            FETCH FORECAST
-          </button>
-        </div>
-
-        <div id="map-container" class="map-container"></div>
+        <button id="btn-fetch" class="btn-primary" style="margin-bottom: 1rem;">
+          FETCH FORECAST
+        </button>
       </section>
 
       <!-- Right Panel: Data Output -->

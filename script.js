@@ -91,6 +91,17 @@ function setupEventListeners() {
   const btnFetch = document.getElementById('btn-fetch');
   const btnGeo = document.getElementById('btn-geolocation');
   const fuelInputs = document.querySelectorAll('input[name="fuel-type"]');
+  const btnToggleManual = document.getElementById('btn-toggle-manual');
+  const manualContainer = document.getElementById('manual-input-container');
+
+  btnToggleManual.addEventListener('click', () => {
+    manualContainer.classList.toggle('hidden');
+    if (manualContainer.classList.contains('hidden')) {
+      btnToggleManual.innerText = "+ ENTER COORDINATES MANUALLY";
+    } else {
+      btnToggleManual.innerText = "- HIDE MANUAL COORDINATES";
+    }
+  });
 
   btnGeo.addEventListener('click', () => {
     if ("geolocation" in navigator) {
