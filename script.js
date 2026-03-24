@@ -94,6 +94,40 @@ function setupEventListeners() {
   const fuelInputs = document.querySelectorAll('input[name="fuel-type"]');
   const btnToggleManual = document.getElementById('btn-toggle-manual');
   const manualContainer = document.getElementById('manual-input-container');
+  const pasteInput = document.getElementById('paste-input');
+
+  pasteInput.addEventListener('input', (e) => {
+    const val = e.target.value;
+    if (!val) return;
+    
+    let lat = null, lon = null;
+    // Handle standard Google Maps URL /@37.1995,-105.4236 (captures decimals inside URL)
+    const atMatch = val.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+    if (atMatch) {
+      lat = parseFloat(atMatch[1]);
+      lon = parseFloat(atMatch[2]);
+    } else {
+      // Fallback: Handle general text "37.1995, -105.4236" or Apple Maps "Near 37.19, -105.42"
+      // Looks for two repeating groups of floats separated by non-math characters
+      const numMatch = val.match(/(-?\d+\.\d+)[^\d.-]+(-?\d+\.\d+)/);
+      if (numMatch) {
+        lat = parseFloat(numMatch[1]);
+        lon = parseFloat(numMatch[2]);
+      }
+    }
+
+    if (lat !== null && lon !== null && !isNaN(lat) && !isNaN(lon)) {
+      // Validate logical geographic restraints
+      if (lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180) {
+        document.getElementById('lat-input').value = lat.toFixed(4);
+        document.getElementById('lon-input').value = lon.toFixed(4);
+        e.target.value = ''; // Clean the input visually for the user
+        
+        // Auto-update map pin
+        updateCoordinates(lat, lon);
+      }
+    }
+  });
 
   btnToggleManual.addEventListener('click', () => {
     manualContainer.classList.toggle('hidden');

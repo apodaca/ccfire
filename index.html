@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Tactical Fire Weather PWA</title>
   <link rel="manifest" href="manifest.json">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -67,13 +67,17 @@
         </button>
 
         <div id="manual-input-container" class="hidden" style="border-left: 2px solid #ccc; padding-left: 1rem; margin-bottom: 1rem;">
+          <div class="input-group" style="margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px dashed var(--border-muted);">
+            <label for="paste-input">PASTE COORDS (FROM MAPS)</label>
+            <input type="text" id="paste-input" placeholder="e.g. 37.199, -105.423" style="font-size: 16px;" />
+          </div>
           <div class="input-group">
             <label for="lat-input">Latitude</label>
-            <input type="number" id="lat-input" step="0.0001" placeholder="37.1995" />
+            <input type="number" id="lat-input" step="0.0001" placeholder="37.1995" style="font-size: 16px;" />
           </div>
           <div class="input-group">
             <label for="lon-input">Longitude</label>
-            <input type="number" id="lon-input" step="0.0001" placeholder="-105.4236" />
+            <input type="number" id="lon-input" step="0.0001" placeholder="-105.4236" style="font-size: 16px;" />
           </div>
         </div>
         
